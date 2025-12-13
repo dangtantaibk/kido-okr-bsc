@@ -321,7 +321,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 };
 
 // --- Main Component ---
-export function InteractiveGraph() {
+export function InteractiveGraph({ filterDepartment }: { filterDepartment?: string }) {
   const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('LR');
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -331,39 +331,73 @@ export function InteractiveGraph() {
     let edges: Edge[] = [];
     const perspectives: Perspective[] = ['financial', 'external', 'internal', 'learning'];
 
+    // Pre-calculate valid IDs if filtering
+    let validGoalIds = new Set<string>();
+    let validObjIds = new Set<string>();
+
+    if (filterDepartment) {
+      const relevantDepts = departmentOGSMs.filter(d => d.department === filterDepartment);
+      relevantDepts.forEach(d => {
+        if (d.linkedGoalId) validGoalIds.add(d.linkedGoalId);
+      });
+      ogsmGoals.forEach(g => {
+        if (validGoalIds.has(g.id)) validObjIds.add(g.objectiveId);
+      });
+    }
+
     perspectives.forEach(p => {
+      // 1. Get Objectives
+      let objectives = ogsmObjectives.filter(o => o.perspective === p);
+      if (filterDepartment) {
+        objectives = objectives.filter(o => validObjIds.has(o.id));
+      }
+
+      // If filtering and no objectives for this perspective, skip the entire branch (cleanup)
+      if (filterDepartment && objectives.length === 0) return;
+
       const pId = `p-${p}`;
       nodes.push({
         id: pId,
         type: 'custom',
-        data: { label: p, type: 'perspective', content: p, hasChildren: true, perspective: p },
+        data: { label: p, type: 'perspective', content: p, hasChildren: objectives.length > 0, perspective: p },
         position: { x: 0, y: 0 }
       });
 
-      const objectives = ogsmObjectives.filter(o => o.perspective === p);
       objectives.forEach(obj => {
         const objId = obj.id;
+
+        // 2. Get Goals
+        let goals = ogsmGoals.filter(g => g.objectiveId === obj.id);
+        if (filterDepartment) {
+          goals = goals.filter(g => validGoalIds.has(g.id));
+        }
+
         nodes.push({
           id: objId,
           type: 'custom',
           // Pass perspective prop
-          data: { label: obj.name, type: 'objective', content: obj, hasChildren: true, perspective: p },
+          data: { label: obj.name, type: 'objective', content: obj, hasChildren: goals.length > 0, perspective: p },
           position: { x: 0, y: 0 }
         });
         edges.push({ id: `${pId}-${objId}`, source: pId, target: objId, type: 'smoothstep', animated: true, style: { stroke: '#cbd5e1', strokeWidth: 2 } });
 
-        const goals = ogsmGoals.filter(g => g.objectiveId === obj.id);
         goals.forEach(goal => {
           const goalId = goal.id;
+
+          // 3. Get Departments
+          let depts = departmentOGSMs.filter(d => d.linkedGoalId === goal.id);
+          if (filterDepartment) {
+            depts = depts.filter(d => d.department === filterDepartment);
+          }
+
           nodes.push({
             id: goalId,
             type: 'custom',
-            data: { label: goal.name, type: 'goal', content: goal, hasChildren: true, perspective: p },
+            data: { label: goal.name, type: 'goal', content: goal, hasChildren: depts.length > 0, perspective: p },
             position: { x: 0, y: 0 }
           });
           edges.push({ id: `${objId}-${goalId}`, source: objId, target: goalId, type: 'smoothstep', animated: false, style: { stroke: '#cbd5e1', strokeWidth: 2 } });
 
-          const depts = departmentOGSMs.filter(d => d.linkedGoalId === goal.id);
           depts.forEach(dept => {
             const deptId = dept.id;
             const align = getAlignmentStatus(dept);
@@ -387,7 +421,7 @@ export function InteractiveGraph() {
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, []);
+  }, [filterDepartment]);
 
   // 2. State Logic
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
