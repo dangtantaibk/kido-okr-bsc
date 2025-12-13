@@ -1,0 +1,78 @@
+'use client';
+
+import { Bell, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+
+interface HeaderProps {
+  title: string;
+  subtitle?: string;
+}
+
+export function Header({ title, subtitle }: HeaderProps) {
+  return (
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-6 backdrop-blur-sm">
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">{title}</h1>
+        {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+      </div>
+
+      <div className="flex items-center gap-4">
+        {/* Search */}
+        <div className="relative hidden md:block">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            type="search"
+            placeholder="Tìm kiếm..."
+            className="w-64 pl-9"
+          />
+        </div>
+
+        {/* Notifications */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5 text-slate-600" />
+              <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 p-0 text-[10px]">
+                3
+              </Badge>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel>Thông báo</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
+              <p className="text-sm font-medium">KPI Thị phần kem có rủi ro</p>
+              <p className="text-xs text-slate-500">Hiện tại: 43% / Mục tiêu: 45%</p>
+              <p className="text-xs text-slate-400">5 phút trước</p>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
+              <p className="text-sm font-medium">OKR Q4 cần cập nhật</p>
+              <p className="text-xs text-slate-500">3 OKRs cần báo cáo tiến độ</p>
+              <p className="text-xs text-slate-400">1 giờ trước</p>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
+              <p className="text-sm font-medium">CSF hoàn thành</p>
+              <p className="text-xs text-slate-500">Chương trình đào tạo kỹ năng số đã hoàn thành</p>
+              <p className="text-xs text-slate-400">2 giờ trước</p>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Quarter Badge */}
+        <Badge variant="outline" className="hidden border-amber-300 bg-amber-50 text-amber-700 sm:flex">
+          Q4 2024
+        </Badge>
+      </div>
+    </header>
+  );
+}
