@@ -654,6 +654,7 @@ export interface OGSMObjective {
   id: string;
   name: string;
   description: string;
+  perspective: Perspective;
 }
 
 export interface OGSMGoal {
@@ -673,16 +674,26 @@ export interface OGSMStrategy {
 }
 
 export const ogsmObjectives: OGSMObjective[] = [
-  { id: 'obj-1', name: 'Tăng trưởng', description: 'Tăng trưởng 30% từ thị trường hiện tại, NPD, cơ hội mới' },
-  { id: 'obj-2', name: 'Lợi nhuận', description: 'Giảm chi phí 10%' },
+  { id: 'obj-1', name: 'Tăng trưởng bền vững', description: 'Tăng trưởng doanh thu và thị phần', perspective: 'financial' },
+  { id: 'obj-2', name: 'Trải nghiệm khách hàng', description: 'Nâng cao sự hài lòng và lòng trung thành', perspective: 'external' },
+  { id: 'obj-3', name: 'Tối ưu vận hành', description: 'Hiệu quả chi phí và quy trình', perspective: 'internal' },
+  { id: 'obj-4', name: 'Phát triển đội ngũ', description: 'Nâng cao năng lực và gắn kết', perspective: 'learning' },
 ];
 
 export const ogsmGoals: OGSMGoal[] = [
-  { id: 'goal-1', objectiveId: 'obj-1', name: 'Tăng trưởng tổng', target: '+30%', owner: 'CEO / Sales', progress: 72 },
-  { id: 'goal-2', objectiveId: 'obj-1', name: 'Tăng trưởng từ Sản phẩm/Thị trường hiện hữu', target: '+10%', owner: 'Sales GT/MT', progress: 85 },
-  { id: 'goal-3', objectiveId: 'obj-1', name: 'Tăng trưởng từ Sản phẩm mới (New Portfolio)', target: '+10%', owner: 'Marketing + R&D', progress: 65 },
-  { id: 'goal-4', objectiveId: 'obj-1', name: 'Tăng trưởng từ Cơ hội/Thị trường mới (New Market)', target: '+5%', owner: 'Business Development', progress: 45 },
-  { id: 'goal-5', objectiveId: 'obj-2', name: 'Đóng góp từ việc Tiết giảm chi phí (Cost Efficiency)', target: '-5%', owner: 'CFO + Ops', progress: 78 },
+  // Financial
+  { id: 'goal-1', objectiveId: 'obj-1', name: 'Tăng trưởng doanh thu', target: '+30%', owner: 'CEO / Sales', progress: 72 },
+  { id: 'goal-5', objectiveId: 'obj-1', name: 'Tối ưu chi phí (Cost Efficiency)', target: '-5%', owner: 'CFO + Ops', progress: 78 },
+
+  // External
+  { id: 'goal-2', objectiveId: 'obj-2', name: 'Mở rộng thị phần', target: '+10%', owner: 'Sales GT/MT', progress: 85 },
+  { id: 'goal-3', objectiveId: 'obj-2', name: 'Phát triển sản phẩm mới', target: '+10%', owner: 'Marketing + R&D', progress: 65 },
+
+  // Internal
+  { id: 'goal-4', objectiveId: 'obj-3', name: 'Chuyển đổi số & Tự động hóa', target: '100% quy trình', owner: 'CTO / Ops', progress: 45 },
+
+  // Learning
+  { id: 'goal-6', objectiveId: 'obj-4', name: 'Đào tạo & Phát triển', target: '50h/người/năm', owner: 'HR Director', progress: 82 },
 ];
 
 export const ogsmStrategies: OGSMStrategy[] = [
@@ -702,15 +713,19 @@ export interface DepartmentOGSM {
   measures: string[];
   owner: string;
   progress: number;
+  linkedGoalId?: string; // Link to Company Goal
+  kpiIds?: string[]; // IDs for data validation
 }
 
 export const departmentOGSMs: DepartmentOGSM[] = [
-  { id: 'dept-1', department: 'Sales GT', purpose: 'Tăng trưởng', objective: '+10%', strategy: 'Tăng độ phủ, forecast chuẩn', measures: ['Doanh thu', 'OOS rate'], owner: 'Giám đốc Sales GT', progress: 85 },
-  { id: 'dept-2', department: 'Sales MT', purpose: 'Tăng trưởng', objective: '+15%', strategy: 'Đẩy mạnh promotions', measures: ['Doanh số MT', 'Share of shelf'], owner: 'Giám đốc Sales MT', progress: 78 },
-  { id: 'dept-3', department: 'Marketing', purpose: 'NPD', objective: '+10%', strategy: 'Push NPD', measures: ['Sell-out NPD', 'Brand awareness'], owner: 'CMO', progress: 65 },
-  { id: 'dept-4', department: 'R&D', purpose: 'NPD', objective: '5 sản phẩm mới', strategy: 'Innovation pipeline', measures: ['Số SP mới', 'Time-to-market'], owner: 'Giám đốc R&D', progress: 80 },
-  { id: 'dept-5', department: 'Operations', purpose: 'Chi phí', objective: '-5%', strategy: 'Lean manufacturing', measures: ['OEE', 'Waste reduction'], owner: 'COO', progress: 72 },
-  { id: 'dept-6', department: 'Supply Chain', purpose: 'Chi phí', objective: '-3%', strategy: 'Tối ưu logistics', measures: ['Cost per delivery', 'Lead time'], owner: 'Giám đốc SCM', progress: 68 },
+  { id: 'dept-1', department: 'Sales GT', purpose: 'Tăng trưởng', objective: '+10%', strategy: 'Tăng độ phủ, forecast chuẩn', measures: ['Doanh thu', 'OOS rate'], owner: 'Giám đốc Sales GT', progress: 85, linkedGoalId: 'goal-1', kpiIds: ['kpi-1'] },
+  { id: 'dept-2', department: 'Sales MT', purpose: 'Tăng trưởng', objective: '+15%', strategy: 'Đẩy mạnh promotions', measures: ['Doanh số MT', 'Share of shelf'], owner: 'Giám đốc Sales MT', progress: 78, linkedGoalId: 'goal-2', kpiIds: ['kpi-4'] },
+  { id: 'dept-3', department: 'Marketing', purpose: 'NPD', objective: '+10%', strategy: 'Push NPD', measures: ['Sell-out NPD', 'Brand awareness'], owner: 'CMO', progress: 65, linkedGoalId: 'goal-3', kpiIds: ['kpi-5'] },
+  { id: 'dept-4', department: 'R&D', purpose: 'NPD', objective: '5 sản phẩm mới', strategy: 'Innovation pipeline', measures: ['Số SP mới', 'Time-to-market'], owner: 'Giám đốc R&D', progress: 80, linkedGoalId: 'goal-3', kpiIds: ['kpi-12'] },
+  { id: 'dept-5', department: 'Operations', purpose: 'Chi phí', objective: '-5%', strategy: 'Lean manufacturing', measures: ['OEE', 'Waste reduction'], owner: 'COO', progress: 72, linkedGoalId: 'goal-5', kpiIds: ['kpi-7'] },
+  { id: 'dept-6', department: 'Supply Chain', purpose: 'Chi phí', objective: '-3%', strategy: 'Tối ưu logistics', measures: ['Cost per delivery', 'Lead time'], owner: 'Giám đốc SCM', progress: 68, linkedGoalId: 'goal-5' },
+  { id: 'dept-7', department: 'Technology', purpose: 'Hệ thống', objective: '100% ERP', strategy: 'SAP Rollout', measures: ['Progress', 'Uptime'], owner: 'CTO', progress: 45, linkedGoalId: 'goal-4', kpiIds: ['kpi-9'] },
+  { id: 'dept-8', department: 'HR', purpose: 'Nhân sự', objective: 'Đào tạo', strategy: 'Skill matrix', measures: ['Training hours', 'Retention'], owner: 'HRD', progress: 82, linkedGoalId: 'goal-6', kpiIds: ['kpi-10', 'kpi-11'] },
 ];
 
 // Fishbone Analysis

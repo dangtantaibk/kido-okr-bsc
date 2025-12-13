@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useSidebar } from '@/contexts/sidebar-context';
 
 interface NavItem {
   name: string;
@@ -72,7 +72,7 @@ const navigationGroups: NavGroup[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggleCollapsed } = useSidebar();
 
   return (
     <aside
@@ -97,7 +97,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={toggleCollapsed}
           className="h-8 w-8 text-slate-400 hover:bg-slate-700 hover:text-white"
         >
           {collapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

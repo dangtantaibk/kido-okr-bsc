@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Sidebar } from '@/components/layout/sidebar';
+import { MainContent } from '@/components/layout/main-content';
+import { SidebarProvider } from '@/contexts/sidebar-context';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -26,13 +28,16 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="flex min-h-screen bg-slate-50">
-          <Sidebar />
-          <main className="ml-64 flex-1 transition-all duration-300">
-            {children}
-          </main>
-        </div>
+        <SidebarProvider>
+          <div className="flex min-h-screen bg-slate-50">
+            <Sidebar />
+            <MainContent>
+              {children}
+            </MainContent>
+          </div>
+        </SidebarProvider>
       </body>
     </html>
   );
 }
+
