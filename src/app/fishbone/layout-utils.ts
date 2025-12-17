@@ -1,10 +1,11 @@
-import { Edge, Node } from 'reactflow';
+import { Edge, Node, Position } from 'reactflow';
 import { FishboneStructure } from './types';
 
 const SPINE_Y = 300;
 const SPACING_X = 250;
 const RIB_HEIGHT = 150;
 const RIB_OFFSET_X = 50;
+const HEAD_NODE_HEIGHT = 60;
 
 export const calculateFishboneLayout = (
   data: FishboneStructure
@@ -22,7 +23,8 @@ export const calculateFishboneLayout = (
   nodes.push({
     id: headId,
     type: 'fishboneHead',
-    position: { x: headX, y: SPINE_Y - 25 },
+    // Align the head's left handle (vertical center) with the spine.
+    position: { x: headX, y: (SPINE_Y - HEAD_NODE_HEIGHT / 2) + 10 },
     data: { label: data.label, type: 'head' },
   });
 
@@ -35,14 +37,16 @@ export const calculateFishboneLayout = (
     data: { label: '' },
     draggable: false,
     connectable: false,
+    selectable: false,
+    sourcePosition: Position.Right,
   });
 
   edges.push({
     id: `edge-spine`,
     source: 'spine-tail',
     target: headId,
-    type: 'step',
-    style: { stroke: '#64748b', strokeWidth: 4 },
+    type: 'straight',
+    style: { stroke: '#64748b', strokeWidth: 4, strokeLinecap: 'round' },
     markerEnd: { type: 'arrowclosed' as any, color: '#64748b' },
   });
 
@@ -69,7 +73,9 @@ export const calculateFishboneLayout = (
       style: { width: 1, height: 1, opacity: 0 },
       data: { label: '' },
       draggable: false,
-      parentId: 'spine-tail',
+      connectable: false,
+      selectable: false,
+      targetPosition: Position.Left,
     });
 
     const sourceHandle = isTop ? 'source-bottom' : 'source-top';
@@ -80,7 +86,7 @@ export const calculateFishboneLayout = (
       target: anchorId,
       sourceHandle: sourceHandle,
       type: 'straight',
-      style: { stroke: '#94a3b8', strokeWidth: 2 },
+      style: { stroke: '#94a3b8', strokeWidth: 2, strokeLinecap: 'round' },
     });
 
     // 3. Recursive Children (Causes & Sub-causes)

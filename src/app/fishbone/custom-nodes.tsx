@@ -15,7 +15,7 @@ const FishboneHeadNode = ({ data, id }: NodeProps<FishboneNodeData>) => {
   };
 
   return (
-    <div className="relative flex items-center justify-center min-w-[150px] min-h-[60px] cursor-default transition-all">
+    <div className="relative flex h-[60px] min-w-[150px] items-center justify-center cursor-default transition-all">
       <Handle type="target" position={Position.Left} className="!bg-transparent !border-0" />
 
       <div className="relative z-10 flex w-full flex-col items-center justify-center rounded-lg border-2 border-red-600 bg-red-500 p-2 shadow-lg text-white">
