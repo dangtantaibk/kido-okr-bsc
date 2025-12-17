@@ -324,6 +324,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 export function InteractiveGraph({ filterDepartment }: { filterDepartment?: string }) {
   const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('LR');
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const graphContainerRef = React.useRef<HTMLDivElement>(null);
 
   // 1. Initial Data Construction
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -508,7 +509,28 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
   };
 
   // 6. Full Screen Toggle
-  const toggleFullScreen = () => setIsFullScreen(!isFullScreen);
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+    };
+  }, []);
+
+  const toggleFullScreen = () => {
+    if (!isFullScreen) {
+      if (graphContainerRef.current) {
+        graphContainerRef.current.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+      }
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   // Layout Toggle
   const toggleLayout = () => {
@@ -516,7 +538,10 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
   };
 
   return (
-    <div className={`w-full transition-all duration-300 ${isFullScreen ? 'fixed inset-0 z-[100] h-screen rounded-none' : 'h-[800px] rounded-xl'} bg-slate-50 relative border border-slate-200 shadow-inner overflow-hidden group`}>
+    <div
+      ref={graphContainerRef}
+      className={`w-full transition-all duration-300 ${isFullScreen ? 'bg-white' : 'h-[800px] rounded-xl relative border border-slate-200 shadow-inner overflow-hidden'}`}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -576,7 +601,7 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
             variant={isFullScreen ? "secondary" : "default"}
             size="sm"
             className={`w-full h-8 text-xs ${isFullScreen ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-            onClick={() => setIsFullScreen(!isFullScreen)}
+            onClick={toggleFullScreen}
           >
             {isFullScreen ? (
               <> <Minimize2 className="w-3 h-3 mr-2" /> Exit Fullscreen </>

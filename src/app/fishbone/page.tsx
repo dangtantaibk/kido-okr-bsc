@@ -12,6 +12,7 @@ import {
   Clock,
   XCircle,
 } from 'lucide-react';
+import FishboneDiagram from './fishbone-diagram';
 import {
   fishboneItems,
   actionStatusLabels,
@@ -92,7 +93,7 @@ export default function FishbonePage() {
           ))}
         </div>
 
-        {/* Fishbone Diagram (Simplified) */}
+        {/* Fishbone Diagram (Interactive) */}
         <Card className="mb-6 border-0 shadow-md">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -100,91 +101,10 @@ export default function FishbonePage() {
                 <GitBranch className="h-5 w-5 text-blue-500" />
                 Sơ đồ Fishbone
               </CardTitle>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Thêm vấn đề
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="w-full overflow-x-auto py-8">
-              <div className="min-w-[800px] relative h-[400px]">
-                <svg className="w-full h-full" viewBox="0 0 800 400">
-                  {/* Definition for markers */}
-                  <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
-                    </marker>
-                  </defs>
-
-                  {/* Main Spine */}
-                  <line x1="50" y1="200" x2="680" y2="200" stroke="#64748b" strokeWidth="4" markerEnd="url(#arrowhead)" />
-
-                  {/* Problem Box (Head) */}
-                  <foreignObject x="680" y="170" width="120" height="60">
-                    <div className="flex h-full w-full items-center justify-center rounded-lg bg-red-500 text-white font-bold shadow-md border-2 border-red-600">
-                      VẤN ĐỀ
-                    </div>
-                  </foreignObject>
-
-                  {/* Top Ribs */}
-                  {/* Rib 1: Forecast */}
-                  <line x1="150" y1="80" x2="250" y2="200" stroke="#94a3b8" strokeWidth="2" />
-                  <foreignObject x="50" y="40" width="120" height="40">
-                    <div className="flex items-center justify-end gap-2 pr-2">
-                      <span className="text-sm font-semibold text-slate-700">Forecast</span>
-                      <div className={`h-3 w-3 rounded-full ${factorColors['Forecast']}`} />
-                    </div>
-                  </foreignObject>
-
-                  {/* Rib 2: Kho */}
-                  <line x1="300" y1="80" x2="400" y2="200" stroke="#94a3b8" strokeWidth="2" />
-                  <foreignObject x="200" y="40" width="120" height="40">
-                    <div className="flex items-center justify-end gap-2 pr-2">
-                      <span className="text-sm font-semibold text-slate-700">Kho</span>
-                      <div className={`h-3 w-3 rounded-full ${factorColors['Kho']}`} />
-                    </div>
-                  </foreignObject>
-
-                  {/* Rib 3: Trade */}
-                  <line x1="450" y1="80" x2="550" y2="200" stroke="#94a3b8" strokeWidth="2" />
-                  <foreignObject x="350" y="40" width="120" height="40">
-                    <div className="flex items-center justify-end gap-2 pr-2">
-                      <span className="text-sm font-semibold text-slate-700">Trade</span>
-                      <div className={`h-3 w-3 rounded-full ${factorColors['Trade']}`} />
-                    </div>
-                  </foreignObject>
-
-                  {/* Bottom Ribs */}
-                  {/* Rib 4: Sản xuất */}
-                  <line x1="150" y1="320" x2="250" y2="200" stroke="#94a3b8" strokeWidth="2" />
-                  <foreignObject x="50" y="320" width="120" height="40">
-                    <div className="flex items-center justify-end gap-2 pr-2">
-                      <span className="text-sm font-semibold text-slate-700">Sản xuất</span>
-                      <div className={`h-3 w-3 rounded-full ${factorColors['Sản xuất']}`} />
-                    </div>
-                  </foreignObject>
-
-                  {/* Rib 5: NPD */}
-                  <line x1="300" y1="320" x2="400" y2="200" stroke="#94a3b8" strokeWidth="2" />
-                  <foreignObject x="200" y="320" width="120" height="40">
-                    <div className="flex items-center justify-end gap-2 pr-2">
-                      <span className="text-sm font-semibold text-slate-700">NPD</span>
-                      <div className={`h-3 w-3 rounded-full ${factorColors['NPD']}`} />
-                    </div>
-                  </foreignObject>
-
-                  {/* Rib 6: Logistics */}
-                  <line x1="450" y1="320" x2="550" y2="200" stroke="#94a3b8" strokeWidth="2" />
-                  <foreignObject x="350" y="320" width="120" height="40">
-                    <div className="flex items-center justify-end gap-2 pr-2">
-                      <span className="text-sm font-semibold text-slate-700">Logistics</span>
-                      <div className={`h-3 w-3 rounded-full ${factorColors['Logistics']}`} />
-                    </div>
-                  </foreignObject>
-                </svg>
-              </div>
-            </div>
+            <FishboneDiagram />
           </CardContent>
         </Card>
 
