@@ -86,7 +86,7 @@ export default function OGSMDepartmentPage() {
 
   return (
     <div className="min-h-screen">
-      <Header title="OGSM Department" subtitle="Phân rã chiến lược theo Phòng ban" />
+      <Header title="Bản đồ chiến lược cấp Phòng ban" subtitle="Phân rã chiến lược theo Phòng ban" />
 
       <div className="p-6">
         {/* Navigation */}
@@ -94,7 +94,7 @@ export default function OGSMDepartmentPage() {
           <Link href="/ogsm">
             <Button variant="outline" size="sm" className="hover:bg-slate-100">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Quay lại OGSM Company
+              Quay lại Bản đồ chiến lược tổng công ty
             </Button>
           </Link>
         </div>

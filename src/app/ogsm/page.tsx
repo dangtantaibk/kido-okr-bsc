@@ -143,7 +143,7 @@ export default function OGSMCompanyPage() {
 
   return (
     <div className="min-h-screen">
-      <Header title="OGSM Company" subtitle="Objectives, Goals, Strategies, Measures - Cấp Công ty" />
+      <Header title="Bản đồ chiến lược - Tổng công ty" subtitle="Objectives, Goals, Strategies, Measures - Tổng Công ty" />
 
       <div className="p-6">
         {/* Introduction */}
@@ -277,7 +277,7 @@ export default function OGSMCompanyPage() {
                 </div>
                 <Link href="/ogsm/department">
                   <Button className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-md">
-                    OGSM Department
+                    Bản đồ chiến lược Phòng ban
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>

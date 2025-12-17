@@ -40,10 +40,10 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Chiến lược',
+    title: 'Bản đồ chiến lược',
     items: [
-      { name: 'OGSM Company', href: '/ogsm', icon: Building2 },
-      { name: 'OGSM Department', href: '/ogsm/department', icon: Users2 },
+      { name: 'Tổng Công ty', href: '/ogsm', icon: Building2 },
+      { name: 'Cấp Phòng ban', href: '/ogsm/department', icon: Users2 },
     ],
   },
   {
