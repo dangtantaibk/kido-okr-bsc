@@ -16,6 +16,7 @@ import {
   ClipboardList,
   CalendarCheck,
   ChevronDown,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Tổng Công ty', href: '/ogsm', icon: Building2 },
       { name: 'Cấp Phòng ban', href: '/ogsm/department', icon: Users2 },
+      { name: 'Visual Map', href: '/strategy-map', icon: Map },
     ],
   },
   {
