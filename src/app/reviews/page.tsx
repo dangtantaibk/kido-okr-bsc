@@ -17,7 +17,14 @@ import {
   GitBranch,
   ClipboardList,
 } from 'lucide-react';
-import { reviewItems } from '@/data/mock-data';
+import { useEffect, useState } from 'react';
+import type { ReviewItem } from '@/data/mock-data';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getReviews } from '@/lib/supabase/queries/reviews';
+import { getOrganizationByName, getFirstOrganization } from '@/lib/supabase/queries/organizations';
+import { mapReviewRow } from '@/lib/supabase/mappers';
+
+const organizationName = 'KIDO Group';
 
 const reviewFlowSteps = [
   { icon: BarChart3, label: 'KPI Check', desc: 'Xem KPIs tuần' },
@@ -27,8 +34,52 @@ const reviewFlowSteps = [
 ];
 
 export default function ReviewsPage() {
+  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadReviews = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const org =
+          (await getOrganizationByName(supabase, organizationName)) ||
+          (await getFirstOrganization(supabase));
+        const orgId = org?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const reviewRows = await getReviews(supabase, orgId);
+        if (!isActive) {
+          return;
+        }
+
+        setReviewItems((reviewRows || []).map(mapReviewRow));
+      } catch (error) {
+        console.error('Failed to load reviews', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadReviews();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const weeklyReview = reviewItems.find(r => r.type === 'weekly');
   const monthlyReview = reviewItems.find(r => r.type === 'monthly');
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen">

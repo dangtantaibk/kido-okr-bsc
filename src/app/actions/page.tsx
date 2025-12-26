@@ -21,14 +21,59 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import {
-  weeklyActions,
   actionStatusLabels,
   actionStatusColors,
 } from '@/data/mock-data';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { WeeklyAction } from '@/data/mock-data';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getWeeklyActions } from '@/lib/supabase/queries/actions';
+import { getOrganizationByName, getFirstOrganization } from '@/lib/supabase/queries/organizations';
+import { mapWeeklyActionRow } from '@/lib/supabase/mappers';
+
+const organizationName = 'KIDO Group';
 
 export default function ActionsPage() {
   const [selectedWeek, setSelectedWeek] = useState<string>('all');
+  const [weeklyActions, setWeeklyActions] = useState<WeeklyAction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadActions = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const org =
+          (await getOrganizationByName(supabase, organizationName)) ||
+          (await getFirstOrganization(supabase));
+        const orgId = org?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const actionRows = await getWeeklyActions(supabase, orgId);
+        if (!isActive) {
+          return;
+        }
+
+        setWeeklyActions((actionRows || []).map(mapWeeklyActionRow));
+      } catch (error) {
+        console.error('Failed to load weekly actions', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadActions();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const weeks = [...new Set(weeklyActions.map(a => a.week))];
 
@@ -47,6 +92,13 @@ export default function ActionsPage() {
     done: weeklyActions.filter(a => a.status === 'done').length,
     pending: weeklyActions.filter(a => a.status === 'pending').length,
   };
+  const completionRate = weeklyActions.length
+    ? Math.round((statusCounts.done / weeklyActions.length) * 100)
+    : 0;
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen">
@@ -110,7 +162,7 @@ export default function ActionsPage() {
               </div>
               <div>
                 <p className="text-sm text-slate-500">Completion rate</p>
-                <p className="text-2xl font-bold">{Math.round((statusCounts.done / weeklyActions.length) * 100)}%</p>
+                <p className="text-2xl font-bold">{completionRate}%</p>
               </div>
             </CardContent>
           </Card>

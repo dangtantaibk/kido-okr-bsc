@@ -14,11 +14,17 @@ import {
 } from 'lucide-react';
 import FishboneDiagram from './fishbone-diagram';
 import {
-  fishboneItems,
   actionStatusLabels,
   actionStatusColors,
 } from '@/data/mock-data';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { FishboneItem } from '@/data/mock-data';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getFishboneItemsByOrg } from '@/lib/supabase/queries/fishbone';
+import { getOrganizationByName, getFirstOrganization } from '@/lib/supabase/queries/organizations';
+import { mapFishboneRow } from '@/lib/supabase/mappers';
+
+const organizationName = 'KIDO Group';
 
 const factorColors: Record<string, string> = {
   'Forecast': 'bg-blue-500',
@@ -31,6 +37,45 @@ const factorColors: Record<string, string> = {
 
 export default function FishbonePage() {
   const [selectedFactor, setSelectedFactor] = useState<string | null>(null);
+  const [fishboneItems, setFishboneItems] = useState<FishboneItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadFishbone = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const org =
+          (await getOrganizationByName(supabase, organizationName)) ||
+          (await getFirstOrganization(supabase));
+        const orgId = org?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const items = await getFishboneItemsByOrg(supabase, orgId);
+        if (!isActive) {
+          return;
+        }
+
+        setFishboneItems((items || []).map(mapFishboneRow));
+      } catch (error) {
+        console.error('Failed to load fishbone items', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFishbone();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const factors = [...new Set(fishboneItems.map(item => item.factor))];
 
@@ -43,6 +88,10 @@ export default function FishbonePage() {
     pending: fishboneItems.filter(i => i.status === 'pending').length,
     overdue: fishboneItems.filter(i => i.status === 'overdue').length,
   };
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen">

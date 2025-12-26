@@ -21,14 +21,12 @@ import {
   XCircle,
 } from 'lucide-react';
 import {
-  okrs,
-  kpis,
-  csfs,
-  dashboardStats,
   perspectiveLabels,
   statusLabels,
   statusColors,
 } from '@/data/mock-data';
+import type { OKR, KPI, CSF } from '@/data/mock-data';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -38,6 +36,13 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { getOKRsByQuarter } from '@/lib/supabase/queries/okrs';
+import { getKPIsByOrg, getKPIWithHistory } from '@/lib/supabase/queries/kpis';
+import { getCSFs } from '@/lib/supabase/queries/csfs';
+import { mapCSFRow, mapKpiHistory, mapKpiRow, mapOKRRow } from '@/lib/supabase/mappers';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useOrganization } from '@/contexts/organization-context';
+import { formatQuarterLabel } from '@/lib/period';
 
 // Perspective Icons
 const perspectiveIcons = {
@@ -55,12 +60,119 @@ const trendIcons = {
 };
 
 export default function DashboardPage() {
-  // Get revenue data for chart
-  const revenueKPI = kpis.find((k) => k.id === 'kpi-1');
+  const [okrsData, setOkrsData] = useState<OKR[]>([]);
+  const [kpisData, setKpisData] = useState<KPI[]>([]);
+  const [csfsData, setCsfsData] = useState<CSF[]>([]);
+  const [revenueHistory, setRevenueHistory] = useState<{ month: string; value: number }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, isLoading: isOrgLoading, activeQuarter, activeFiscalYear } = useOrganization();
+  const quarterLabel = formatQuarterLabel(activeQuarter, activeFiscalYear);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          if (isMounted) {
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        const [okrsRows, kpisRows, csfRows] = await Promise.all([
+          getOKRsByQuarter(supabase, activeQuarter, orgId, activeFiscalYear),
+          getKPIsByOrg(supabase, orgId, activeFiscalYear),
+          getCSFs(supabase, orgId, activeFiscalYear),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const mappedOKRs = (okrsRows || []).map(mapOKRRow);
+        const mappedKPIs = (kpisRows || []).map(mapKpiRow);
+        const mappedCSFs = (csfRows || []).map((row) => {
+          const mapped = mapCSFRow(row);
+          return {
+            ...mapped,
+            relatedOKRs: mapped.relatedOKRs.map((okr) => okr.id),
+          } as CSF;
+        });
+
+        setOkrsData(mappedOKRs);
+        setKpisData(mappedKPIs);
+        setCsfsData(mappedCSFs);
+
+        const revenueKpi = kpisRows?.find((kpi) => kpi?.name === 'Doanh thu');
+        if (revenueKpi?.id) {
+          const kpiWithHistory = await getKPIWithHistory(supabase, revenueKpi.id);
+          if (isMounted) {
+            setRevenueHistory(mapKpiHistory(kpiWithHistory?.history || []));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadData();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [organization?.id, activeQuarter, activeFiscalYear, isOrgLoading]);
+
+  const dashboardStats = useMemo(() => {
+    const totalOKRs = okrsData.length;
+    const totalKPIs = kpisData.length;
+    const totalCSFs = csfsData.length;
+    const averageProgress =
+      totalOKRs === 0
+        ? 0
+        : Math.round(okrsData.reduce((acc, okr) => acc + okr.progress, 0) / totalOKRs);
+
+    return {
+      totalOKRs,
+      okrsOnTrack: okrsData.filter((okr) => okr.status === 'on_track').length,
+      okrsAtRisk: okrsData.filter((okr) => okr.status === 'at_risk').length,
+      okrsOffTrack: okrsData.filter((okr) => okr.status === 'off_track').length,
+      averageProgress,
+      totalKPIs,
+      kpisOnTrack: kpisData.filter((kpi) => kpi.status === 'on_track').length,
+      kpisAtRisk: kpisData.filter((kpi) => kpi.status === 'at_risk').length,
+      kpisOffTrack: kpisData.filter((kpi) => kpi.status === 'off_track').length,
+      totalCSFs,
+      csfsCompleted: csfsData.filter((csf) => csf.status === 'completed').length,
+      csfsInProgress: csfsData.filter((csf) => csf.status === 'in_progress').length,
+      csfsBlocked: csfsData.filter((csf) => csf.status === 'blocked').length,
+    };
+  }, [okrsData, kpisData, csfsData]);
+
+  const revenueKPI = useMemo(
+    () => ({
+      history: revenueHistory,
+    }),
+    [revenueHistory]
+  );
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen">
-      <Header title="Dashboard" subtitle="Tổng quan chiến lược Q4 2024" />
+      <Header title="Dashboard" subtitle={`Tổng quan chiến lược ${quarterLabel || ''}`.trim()} />
 
       <div className="p-6">
         {/* Stats Cards */}
@@ -201,7 +313,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {(['financial', 'external', 'internal', 'learning'] as const).map((perspective) => {
-                const perspectiveOKRs = okrs.filter((o) => o.perspective === perspective);
+                const perspectiveOKRs = okrsData.filter((o) => o.perspective === perspective);
                 const avgProgress =
                   Math.round(
                     perspectiveOKRs.reduce((acc, o) => acc + o.progress, 0) /
@@ -254,7 +366,7 @@ export default function DashboardPage() {
               </Badge>
             </CardHeader>
             <CardContent className="space-y-4">
-              {okrs.slice(0, 4).map((okr) => (
+              {okrsData.slice(0, 4).map((okr) => (
                 <div
                   key={okr.id}
                   className="flex items-start gap-4 rounded-lg border border-slate-100 bg-white p-4"
@@ -286,11 +398,11 @@ export default function DashboardPage() {
               <CardTitle className="text-lg">KPIs cần chú ý</CardTitle>
               <Badge variant="outline" className="text-amber-600">
                 <AlertTriangle className="mr-1 h-3 w-3" />
-                {kpis.filter((k) => k.status !== 'on_track').length} cảnh báo
+                {kpisData.filter((k) => k.status !== 'on_track').length} cảnh báo
               </Badge>
             </CardHeader>
             <CardContent className="space-y-4">
-              {kpis
+              {kpisData
                 .filter((k) => k.status !== 'on_track')
                 .slice(0, 4)
                 .map((kpi) => {
@@ -341,22 +453,22 @@ export default function DashboardPage() {
             <CardTitle className="text-lg">Critical Success Factors</CardTitle>
             <div className="flex gap-2">
               <Badge className="bg-gray-400">
-                {csfs.filter((c) => c.status === 'not_started').length} Chưa bắt đầu
+                {csfsData.filter((c) => c.status === 'not_started').length} Chưa bắt đầu
               </Badge>
               <Badge className="bg-blue-500">
-                {csfs.filter((c) => c.status === 'in_progress').length} Đang thực hiện
+                {csfsData.filter((c) => c.status === 'in_progress').length} Đang thực hiện
               </Badge>
               <Badge className="bg-emerald-500">
-                {csfs.filter((c) => c.status === 'completed').length} Hoàn thành
+                {csfsData.filter((c) => c.status === 'completed').length} Hoàn thành
               </Badge>
               <Badge className="bg-red-500">
-                {csfs.filter((c) => c.status === 'blocked').length} Bị chặn
+                {csfsData.filter((c) => c.status === 'blocked').length} Bị chặn
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {csfs.slice(0, 4).map((csf) => (
+              {csfsData.slice(0, 4).map((csf) => (
                 <div
                   key={csf.id}
                   className="rounded-lg border border-slate-100 bg-white p-4"

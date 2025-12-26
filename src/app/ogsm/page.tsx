@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Target,
   TrendingUp,
@@ -14,13 +13,11 @@ import {
   Wallet,
 } from 'lucide-react';
 import {
-  ogsmObjectives,
-  ogsmGoals,
-  ogsmStrategies,
   perspectiveLabels,
   perspectiveColors,
   Perspective,
 } from '@/data/mock-data';
+import type { OGSMGoal, OGSMObjective, OGSMStrategy } from '@/data/mock-data';
 import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +25,10 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useEffect, useState } from 'react';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getObjectivesWithCascade } from '@/lib/supabase/queries/ogsm';
+import { useOrganization } from '@/contexts/organization-context';
 
 const goalIcons: Record<string, React.ElementType> = {
   'goal-1': TrendingUp,
@@ -61,9 +62,17 @@ import { InteractiveGraph } from './interactive-graph';
 
 // --- Sub-components ---
 
-const GoalItem = ({ goal, theme }: { goal: any, theme: any }) => {
+const GoalItem = ({
+  goal,
+  theme,
+  strategies,
+}: {
+  goal: OGSMGoal;
+  theme: ReturnType<typeof getThemeColors>;
+  strategies: OGSMStrategy[];
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const strategies = ogsmStrategies.filter(s => s.goalId === goal.id);
+  const filteredStrategies = strategies.filter(s => s.goalId === goal.id);
   const GoalIcon = goalIcons[goal.id] || TrendingUp;
 
   return (
@@ -98,7 +107,7 @@ const GoalItem = ({ goal, theme }: { goal: any, theme: any }) => {
           </div>
 
           {/* Collapsible Trigger */}
-          {strategies.length > 0 && (
+          {filteredStrategies.length > 0 && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className={`mt-3 flex items-center gap-1 text-xs font-medium ${theme ? theme.subTextColor : 'text-slate-500'} hover:text-slate-800 transition-colors focus:outline-none`}
@@ -109,9 +118,9 @@ const GoalItem = ({ goal, theme }: { goal: any, theme: any }) => {
           )}
 
           {/* Strategies & Measures (Collapsible) */}
-          {strategies.length > 0 && isExpanded && (
+          {filteredStrategies.length > 0 && isExpanded && (
             <div className={`mt-3 pt-3 border-t border-slate-100 animate-in slide-in-from-top-2 duration-300`}>
-              {strategies.map((strategy) => (
+              {filteredStrategies.map((strategy) => (
                 <div key={strategy.id} className="flex items-start gap-2 mb-3 last:mb-0">
                   <div className={`mt-1 w-4 h-4 rounded-full ${theme ? theme.lightBg : 'bg-slate-100'} flex items-center justify-center flex-shrink-0`}>
                     <ArrowRight className={`h-2.5 w-2.5 ${theme ? theme.iconColor : 'text-slate-500'}`} />
@@ -137,9 +146,95 @@ const GoalItem = ({ goal, theme }: { goal: any, theme: any }) => {
 };
 
 export default function OGSMCompanyPage() {
+  const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
+  const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
+  const [ogsmStrategies, setOgsmStrategies] = useState<OGSMStrategy[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadOGSM = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const objectiveRows = await getObjectivesWithCascade(
+          supabase,
+          orgId,
+          activeFiscalYear
+        );
+        if (!isActive) {
+          return;
+        }
+
+        const objectives = (objectiveRows || []).map((obj: any) => ({
+          id: obj.id,
+          name: obj.name || '',
+          description: obj.description || '',
+          perspective: obj.perspective || 'financial',
+        }));
+
+        const goals = (objectiveRows || []).flatMap((obj: any) =>
+          (obj.goals || []).map((goal: any) => ({
+            id: goal.id,
+            objectiveId: obj.id,
+            name: goal.name || '',
+            target:
+              goal.target_text ||
+              (goal.target_value
+                ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
+                : ''),
+            owner: goal.owner?.full_name || goal.owner?.email || '',
+            progress: Number(goal.progress || 0),
+          }))
+        );
+
+        const strategies = (objectiveRows || []).flatMap((obj: any) =>
+          (obj.goals || []).flatMap((goal: any) =>
+            (goal.strategies || []).map((strategy: any) => ({
+              id: strategy.id,
+              goalId: goal.id,
+              name: strategy.name || '',
+              measures: (strategy.measures || []).map((measure: any) => measure?.name || ''),
+            }))
+          )
+        );
+
+        setOgsmObjectives(objectives);
+        setOgsmGoals(goals);
+        setOgsmStrategies(strategies);
+      } catch (error) {
+        console.error('Failed to load OGSM data', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadOGSM();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [organization?.id, activeFiscalYear, isOrgLoading]);
+
   const getGoalsForObjective = (objectiveId: string) => {
     return ogsmGoals.filter(g => g.objectiveId === objectiveId);
   };
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen">
@@ -254,7 +349,7 @@ export default function OGSMCompanyPage() {
                       <div className="divide-y divide-slate-100">
                         {goals.length > 0 ? (
                           goals.map(goal => (
-                            <GoalItem key={goal.id} goal={goal} theme={theme} />
+                            <GoalItem key={goal.id} goal={goal} theme={theme} strategies={ogsmStrategies} />
                           ))
                         ) : (
                           <div className="p-8 text-center text-slate-400 text-sm">

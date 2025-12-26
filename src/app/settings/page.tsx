@@ -1,15 +1,87 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Users, Calendar, Bell, Palette, Shield } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Building2, Users, Calendar, Bell } from 'lucide-react';
+import { useOrganization } from '@/contexts/organization-context';
+import { parseQuarterLabel, quarterOptions } from '@/lib/period';
 
 export default function SettingsPage() {
+  const { organization, isLoading, updateOrganization } = useOrganization();
+  const [formState, setFormState] = useState({
+    name: '',
+    slogan: '',
+    fiscalYear: '',
+    quarter: 'Q4',
+  });
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+
+  useEffect(() => {
+    if (!organization) {
+      return;
+    }
+
+    const parsed = parseQuarterLabel(organization.current_quarter ?? '');
+    setFormState({
+      name: organization.name ?? '',
+      slogan: organization.slogan ?? '',
+      fiscalYear: organization.fiscal_year ?? parsed.fiscalYear ?? '',
+      quarter: parsed.quarter || 'Q4',
+    });
+  }, [organization]);
+
+  const isDirty = useMemo(() => {
+    if (!organization) {
+      return false;
+    }
+
+    const parsed = parseQuarterLabel(organization.current_quarter ?? '');
+    return (
+      formState.name !== (organization.name ?? '') ||
+      formState.slogan !== (organization.slogan ?? '') ||
+      formState.fiscalYear !== (organization.fiscal_year ?? parsed.fiscalYear ?? '') ||
+      formState.quarter !== (parsed.quarter || 'Q4')
+    );
+  }, [formState, organization]);
+
+  useEffect(() => {
+    if (saveStatus !== 'saving' && isDirty) {
+      setSaveStatus('idle');
+    }
+  }, [isDirty, saveStatus]);
+
+  const handleSave = async () => {
+    if (!organization?.id) {
+      return;
+    }
+
+    setSaveStatus('saving');
+    try {
+      await updateOrganization({
+        name: formState.name.trim(),
+        slogan: formState.slogan.trim(),
+        fiscal_year: formState.fiscalYear.trim(),
+        current_quarter: formState.quarter,
+      });
+      setSaveStatus('success');
+    } catch (error) {
+      console.error('Failed to update organization', error);
+      setSaveStatus('error');
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <Header title="Cài đặt" subtitle="Quản lý cấu hình hệ thống" />
@@ -33,7 +105,11 @@ export default function SettingsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Tên công ty</Label>
-                  <Input defaultValue="KIDO Group" />
+                  <Input
+                    value={formState.name}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="Tên công ty"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Mã công ty</Label>
@@ -42,7 +118,11 @@ export default function SettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Slogan</Label>
-                <Input defaultValue="Tập đoàn FMCG hàng đầu Việt Nam" />
+                <Input
+                  value={formState.slogan}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, slogan: event.target.value }))}
+                  placeholder="Slogan"
+                />
               </div>
             </CardContent>
           </Card>
@@ -64,11 +144,29 @@ export default function SettingsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Năm tài chính hiện tại</Label>
-                  <Input defaultValue="2024" />
+                  <Input
+                    value={formState.fiscalYear}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, fiscalYear: event.target.value }))}
+                    placeholder="2024"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Quý hiện tại</Label>
-                  <Input defaultValue="Q4 2024" />
+                  <Select
+                    value={formState.quarter}
+                    onValueChange={(value) => setFormState((prev) => ({ ...prev, quarter: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn quý" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {quarterOptions.map((quarter) => (
+                        <SelectItem key={quarter} value={quarter}>
+                          {quarter}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="rounded-lg border bg-slate-50 p-4">
@@ -162,8 +260,20 @@ export default function SettingsPage() {
           {/* Save Button */}
           <div className="flex justify-end gap-4">
             <Button variant="outline">Hủy thay đổi</Button>
-            <Button className="bg-gradient-to-r from-blue-600 to-blue-700">Lưu cài đặt</Button>
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-blue-700"
+              disabled={isLoading || saveStatus === 'saving' || !isDirty}
+              onClick={handleSave}
+            >
+              {saveStatus === 'saving' ? 'Đang lưu...' : 'Lưu cài đặt'}
+            </Button>
           </div>
+          {saveStatus === 'success' && (
+            <p className="text-right text-sm text-emerald-600">Đã lưu cấu hình.</p>
+          )}
+          {saveStatus === 'error' && (
+            <p className="text-right text-sm text-red-500">Lưu thất bại. Vui lòng thử lại.</p>
+          )}
         </div>
       </div>
     </div>

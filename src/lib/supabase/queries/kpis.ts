@@ -6,8 +6,8 @@ export const getKPIWithHistory = async (
   kpiId: string
 ) => {
   const { data, error } = await supabase
-    .from('kpis')
-    .select(`*, history:kpi_history(*)`)
+    .from('okr_kpis')
+    .select(`*, history:okr_kpi_history(*)`)
     .eq('id', kpiId)
     .single();
 
@@ -21,13 +21,23 @@ export const getKPIWithHistory = async (
 export const getKPIsByOrg = async (
   supabase: SupabaseClient<Database>,
   organizationId: string,
+  fiscalYear?: string,
   perspective?: string,
-  status?: string
+  status?: string,
+  withHistory: boolean = false
 ) => {
   let query = supabase
-    .from('kpis')
-    .select(`*, owner:users(*), department:departments(*), linked_goal:goals(*)`)
+    .from('okr_kpis')
+    .select(
+      withHistory
+        ? `*, owner:okr_users(*), department:okr_departments(*), linked_goal:okr_goals(*), history:okr_kpi_history(*)`
+        : `*, owner:okr_users(*), department:okr_departments(*), linked_goal:okr_goals(*)`
+    )
     .eq('organization_id', organizationId);
+
+  if (fiscalYear) {
+    query = query.eq('fiscal_year', fiscalYear);
+  }
 
   if (perspective) {
     query = query.eq('perspective', perspective);

@@ -17,18 +17,70 @@ import {
   Pencil
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { csfs, okrs, csfStatusLabels, csfStatusColors, priorityLabels, priorityColors } from '@/data/mock-data';
+import { csfStatusLabels, csfStatusColors, priorityLabels, priorityColors, perspectiveLabels, statusLabels, statusColors } from '@/data/mock-data';
+import { useEffect, useMemo, useState } from 'react';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getCSFs } from '@/lib/supabase/queries/csfs';
+import { mapCSFRow, type CSFWithRelations } from '@/lib/supabase/mappers';
+import { useOrganization } from '@/contexts/organization-context';
 
 export default function CSFDetailPage() {
   const router = useRouter();
   const params = useParams();
-  // In a real app, fetch data based on params.id
-  // Here we just find it in mock data, or default to first if not found for demo
-  const csf = csfs.find(c => c.id === params?.id) || csfs[0];
+  const [csf, setCsf] = useState<CSFWithRelations | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadCSF = async () => {
+      try {
+        setIsLoading(true);
+        const csfId = typeof params?.id === 'string' ? params.id : '';
+        if (!csfId) {
+          return;
+        }
+
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const csfRows = await getCSFs(supabase, orgId, activeFiscalYear);
+        const match = (csfRows || []).find((row: any) => row?.id === csfId);
+        if (!isActive) {
+          return;
+        }
+
+        setCsf(match ? mapCSFRow(match) : null);
+      } catch (error) {
+        console.error('Failed to load CSF detail', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadCSF();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [params, organization?.id, activeFiscalYear, isOrgLoading]);
+
+  const relatedOKRs = useMemo(() => csf?.relatedOKRs ?? [], [csf]);
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   if (!csf) return <div>CSF Not Found</div>;
-
-  const relatedOKRs = okrs.filter(o => csf.relatedOKRs.includes(o.id));
 
   return (
     <div className="min-h-screen bg-slate-50/50">
@@ -99,10 +151,10 @@ export default function CSFDetailPage() {
                       <div>
                         <h4 className="font-medium text-slate-900">{okr.objective}</h4>
                         <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
-                          <span>{okr.owner}</span>
-                          <span>•</span>
-                          <span>{okr.quarter}</span>
-                          <Badge variant="outline" className="scale-90 origin-left">{okr.status}</Badge>
+                          <span>{perspectiveLabels[okr.perspective]}</span>
+                          <Badge variant="outline" className={`scale-90 origin-left ${statusColors[okr.status]} text-white border-0`}>
+                            {statusLabels[okr.status]}
+                          </Badge>
                         </div>
                       </div>
                     </div>

@@ -19,7 +19,6 @@ import { nodeTypes } from './custom-nodes';
 import { FishboneStructure } from './types';
 import { Button } from '@/components/ui/button';
 import { Plus, Maximize2, Minimize2 } from 'lucide-react';
-import { fishboneItems } from '@/data/mock-data';
 
 const initialTreeData: FishboneStructure = {
   id: 'root',

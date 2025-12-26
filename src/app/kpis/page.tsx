@@ -53,13 +53,12 @@ import {
   Pencil
 } from 'lucide-react';
 import {
-  kpis,
   Perspective,
   perspectiveLabels,
   statusLabels,
   statusColors,
-  KPI
 } from '@/data/mock-data';
+import type { KPI } from '@/data/mock-data';
 import {
   AreaChart,
   Area,
@@ -75,6 +74,10 @@ import {
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { getThemeColors } from '@/lib/theme';
 import { useRouter } from 'next/navigation';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getKPIsByOrg } from '@/lib/supabase/queries/kpis';
+import { mapKpiRow } from '@/lib/supabase/mappers';
+import { useOrganization } from '@/contexts/organization-context';
 
 const perspectiveIcons = { financial: DollarSign, external: Users, internal: Settings2, learning: BookOpen };
 const statusIcons = { on_track: CheckCircle2, at_risk: AlertTriangle, off_track: XCircle, completed: CheckCircle2 };
@@ -83,14 +86,64 @@ export default function KPIsPage() {
   const router = useRouter();
   const [selectedPerspective, setSelectedPerspective] = useState<Perspective | 'all'>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [managedKPIs, setManagedKPIs] = useState<KPI[]>(kpis);
+  const [managedKPIs, setManagedKPIs] = useState<KPI[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [selectedKPIId, setSelectedKPIId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, isLoading: isOrgLoading, activeFiscalYear } = useOrganization();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadKPIs = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const kpiRows = await getKPIsByOrg(
+          supabase,
+          orgId,
+          activeFiscalYear,
+          undefined,
+          undefined,
+          true
+        );
+        if (!isActive) {
+          return;
+        }
+
+        setManagedKPIs((kpiRows || []).map(mapKpiRow));
+      } catch (error) {
+        console.error('Failed to load KPIs', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadKPIs();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [isMounted, organization?.id, activeFiscalYear, isOrgLoading]);
 
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -134,7 +187,7 @@ export default function KPIsPage() {
   const atRisk = managedKPIs.filter((k) => k.status === 'at_risk').length;
   const offTrack = managedKPIs.filter((k) => k.status === 'off_track').length;
 
-  if (!isMounted) {
+  if (!isMounted || isLoading) {
     return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
   }
 

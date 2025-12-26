@@ -20,15 +20,11 @@ import ReactFlow, {
 import dagre from 'dagre';
 import 'reactflow/dist/style.css';
 import {
-  ogsmObjectives,
-  ogsmGoals,
-  departmentOGSMs,
   perspectiveLabels,
   perspectiveColors,
-  kpis,
-  DepartmentOGSM,
   Perspective,
 } from '@/data/mock-data';
+import type { DepartmentOGSM, KPI, OGSMGoal, OGSMObjective } from '@/data/mock-data';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,9 +53,18 @@ import {
   ArrowRight,
   ArrowDown
 } from 'lucide-react';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getObjectivesWithCascade } from '@/lib/supabase/queries/ogsm';
+import { getKPIsByOrg } from '@/lib/supabase/queries/kpis';
+import { mapKpiRow } from '@/lib/supabase/mappers';
+import { useOrganization } from '@/contexts/organization-context';
 
 // --- Logic Helpers (Reused) ---
-const getAlignmentStatus = (deptItem: DepartmentOGSM) => {
+const getAlignmentStatus = (
+  deptItem: DepartmentOGSM,
+  ogsmGoals: OGSMGoal[],
+  kpis: KPI[]
+) => {
   if (!deptItem.linkedGoalId || !deptItem.kpiIds || deptItem.kpiIds.length === 0) {
     return { status: 'unknown', message: 'Không có dữ liệu liên kết' };
   }
@@ -217,8 +222,8 @@ const CustomNode = ({ data }: { data: any }) => {
           <p className="font-semibold text-slate-900 text-sm mb-2">{content.strategy}</p>
 
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {content.measures.map((m: string) => (
-              <span key={m} className={`px-2 py-0.5 ${theme.lightBg} ${theme.subTextColor} text-[10px] rounded-md font-medium`}>
+            {content.measures.map((m: string, index: number) => (
+              <span key={`${content.id}-measure-${index}`} className={`px-2 py-0.5 ${theme.lightBg} ${theme.subTextColor} text-[10px] rounded-md font-medium`}>
                 {m}
               </span>
             ))}
@@ -325,6 +330,97 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
   const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('LR');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const graphContainerRef = React.useRef<HTMLDivElement>(null);
+  const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
+  const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
+  const [departmentOGSMs, setDepartmentOGSMs] = useState<DepartmentOGSM[]>([]);
+  const [kpis, setKpis] = useState<KPI[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const [objectiveRows, kpiRows] = await Promise.all([
+          getObjectivesWithCascade(supabase, orgId, activeFiscalYear),
+          getKPIsByOrg(supabase, orgId, activeFiscalYear),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        const objectives = (objectiveRows || []).map((obj: any) => ({
+          id: obj.id,
+          name: obj.name || '',
+          description: obj.description || '',
+          perspective: obj.perspective || 'financial',
+        }));
+
+        const goals = (objectiveRows || []).flatMap((obj: any) =>
+          (obj.goals || []).map((goal: any) => ({
+            id: goal.id,
+            objectiveId: obj.id,
+            name: goal.name || '',
+            target:
+              goal.target_text ||
+              (goal.target_value
+                ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
+                : ''),
+            owner: goal.owner?.full_name || goal.owner?.email || '',
+            progress: Number(goal.progress || 0),
+          }))
+        );
+
+        const departmentRows = (objectiveRows || []).flatMap((obj: any) =>
+          (obj.goals || []).flatMap((goal: any) =>
+            (goal.department_ogsms || []).map((dept: any) => ({
+              id: dept.id,
+              department: dept.department?.name || '',
+              purpose: dept.purpose || '',
+              objective: dept.objective || '',
+              strategy: dept.strategy || '',
+              measures: (dept.measures || []).map((measure: any) => measure?.name || ''),
+              owner: dept.owner?.full_name || dept.owner?.email || '',
+              progress: Number(dept.progress || 0),
+              linkedGoalId: dept.linked_goal_id || goal.id,
+              kpiIds: (dept.measures || [])
+                .map((measure: any) => measure?.kpi_id)
+                .filter(Boolean),
+            }))
+          )
+        );
+
+        setOgsmObjectives(objectives);
+        setOgsmGoals(goals);
+        setDepartmentOGSMs(departmentRows);
+        setKpis((kpiRows || []).map(mapKpiRow));
+      } catch (error) {
+        console.error('Failed to load OGSM graph data', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadData();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [organization?.id, activeFiscalYear, isOrgLoading]);
 
   // 1. Initial Data Construction
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -401,7 +497,7 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
 
           depts.forEach(dept => {
             const deptId = dept.id;
-            const align = getAlignmentStatus(dept);
+            const align = getAlignmentStatus(dept, ogsmGoals, kpis);
             nodes.push({
               id: deptId,
               type: 'custom',
@@ -422,7 +518,7 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [filterDepartment]);
+  }, [filterDepartment, departmentOGSMs, ogsmGoals, ogsmObjectives, kpis]);
 
   // 2. State Logic
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -536,6 +632,14 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
   const toggleLayout = () => {
     setLayoutDirection(prev => prev === 'LR' ? 'TB' : 'LR');
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-[600px] flex items-center justify-center text-slate-400">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div

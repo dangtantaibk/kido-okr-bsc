@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Search } from 'lucide-react';
+import { Bell, Calendar, ChevronDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { useOrganization } from '@/contexts/organization-context';
+import { formatQuarterLabel, quarterOptions } from '@/lib/period';
 
 interface HeaderProps {
   title: string;
@@ -19,6 +21,15 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const {
+    activeFiscalYear,
+    activeQuarter,
+    setActiveFiscalYear,
+    setActiveQuarter,
+    yearOptions,
+  } = useOrganization();
+  const quarterLabel = formatQuarterLabel(activeQuarter, activeFiscalYear);
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-6 backdrop-blur-sm">
       <div>
@@ -68,10 +79,38 @@ export function Header({ title, subtitle }: HeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Quarter Badge */}
-        <Badge variant="outline" className="hidden border-amber-300 bg-amber-50 text-amber-700 sm:flex">
-          Q4 2024
-        </Badge>
+        {/* Period Selector */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden gap-2 border-amber-300 bg-amber-50 text-amber-700 sm:flex"
+            >
+              <Calendar className="h-4 w-4" />
+              <span>{quarterLabel || 'Chọn kỳ'}</span>
+              <ChevronDown className="h-3 w-3 text-amber-500" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel>Năm tài chính</DropdownMenuLabel>
+            {yearOptions.map((year) => (
+              <DropdownMenuItem key={year} onClick={() => setActiveFiscalYear(year)}>
+                {year}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Quý hiện tại</DropdownMenuLabel>
+            {quarterOptions.map((quarter) => (
+              <DropdownMenuItem
+                key={quarter}
+                onClick={() => setActiveQuarter(quarter)}
+              >
+                {formatQuarterLabel(quarter, activeFiscalYear)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

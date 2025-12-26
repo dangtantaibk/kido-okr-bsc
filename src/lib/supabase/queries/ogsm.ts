@@ -3,34 +3,42 @@ import type { Database } from '../types';
 
 export const getObjectivesWithCascade = async (
   supabase: SupabaseClient<Database>,
-  organizationId: string
+  organizationId: string,
+  fiscalYear?: string
 ) => {
-  const { data, error } = await supabase
-    .from('objectives')
+  let query = supabase
+    .from('okr_objectives')
     .select(`
       *,
-      goals (
+      goals:okr_goals (
         *,
-        owner:users(*),
-        strategies (
+        owner:okr_users(*),
+        strategies:okr_strategies (
           *,
-          measures:strategy_measures (
+          measures:okr_strategy_measures (
             *,
-            kpi:kpis(*)
+            kpi:okr_kpis(*)
           )
         ),
-        department_ogsms:department_ogsm (
+        department_ogsms:okr_department_ogsm (
           *,
-          department:departments(*),
-          measures:department_measures (
+          department:okr_departments(*),
+          owner:okr_users(*),
+          measures:okr_department_measures (
             *,
-            kpi:kpis(*)
+            kpi:okr_kpis(*)
           )
         )
       )
     `)
     .eq('organization_id', organizationId)
     .eq('status', 'active');
+
+  if (fiscalYear) {
+    query = query.eq('fiscal_year', fiscalYear);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;

@@ -17,7 +17,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { kpis, perspectiveLabels, statusLabels, statusColors, Perspective } from '@/data/mock-data';
+import { perspectiveLabels, statusLabels, statusColors } from '@/data/mock-data';
 import {
   AreaChart,
   Area,
@@ -28,13 +28,56 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { getThemeColors } from '@/lib/theme';
+import { useEffect, useState } from 'react';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getKPIWithHistory } from '@/lib/supabase/queries/kpis';
+import { mapKpiRow } from '@/lib/supabase/mappers';
+import type { KPI } from '@/data/mock-data';
 
 const perspectiveIcons = { financial: DollarSign, external: Users, internal: Settings2, learning: BookOpen };
 
 export default function KPIDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const kpi = kpis.find(k => k.id === params?.id) || kpis[0];
+  const [kpi, setKpi] = useState<KPI | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadKPI = async () => {
+      try {
+        const kpiId = typeof params?.id === 'string' ? params.id : '';
+        if (!kpiId) {
+          return;
+        }
+
+        const supabase = getSupabaseBrowserClient();
+        const kpiRow = await getKPIWithHistory(supabase, kpiId);
+        if (!isActive) {
+          return;
+        }
+
+        setKpi(mapKpiRow(kpiRow));
+      } catch (error) {
+        console.error('Failed to load KPI detail', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadKPI();
+
+    return () => {
+      isActive = false;
+    };
+  }, [params]);
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   if (!kpi) return <div>KPI Not Found</div>;
 

@@ -4,17 +4,18 @@ import type { Database } from '../types';
 export const getOKRsByQuarter = async (
   supabase: SupabaseClient<Database>,
   quarter: string,
-  organizationId?: string
+  organizationId?: string,
+  fiscalYear?: string
 ) => {
   let query = supabase
-    .from('okrs')
+    .from('okr_okrs')
     .select(`
       *,
-      owner:users(*),
-      key_results(*),
-      linked_goal:goals (
+      owner:okr_users(*),
+      key_results:okr_key_results(*),
+      linked_goal:okr_goals (
         *,
-        objective:objectives(*)
+        objective:okr_objectives(*)
       )
     `)
     .eq('quarter', quarter)
@@ -22,6 +23,10 @@ export const getOKRsByQuarter = async (
 
   if (organizationId) {
     query = query.eq('organization_id', organizationId);
+  }
+
+  if (fiscalYear) {
+    query = query.eq('fiscal_year', fiscalYear);
   }
 
   const { data, error } = await query;

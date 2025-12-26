@@ -7,7 +7,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { StrategyNodeData } from './mock-data';
+import type { StrategyNodeData } from './mock-data';
 import { CheckCircle2, Target, Circle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';

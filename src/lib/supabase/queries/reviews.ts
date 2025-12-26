@@ -7,8 +7,8 @@ export const getReviews = async (
   type?: string
 ) => {
   let query = supabase
-    .from('reviews')
-    .select(`*, department:departments(*), facilitator:users(*)`)
+    .from('okr_reviews')
+    .select(`*, department:okr_departments(*), facilitator:okr_users(*)`)
     .eq('organization_id', organizationId)
     .order('scheduled_date', { ascending: false });
 

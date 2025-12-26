@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -10,11 +10,10 @@ import ReactFlow, {
   Node,
   Edge,
   ConnectionMode,
-  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import { initialNodes, initialEdges, StrategyNodeData } from './mock-data';
+import type { StrategyNodeData } from './mock-data';
 import { nodeTypes } from './custom-nodes';
 import { DetailPanel } from './detail-panel';
 import { Button } from '@/components/ui/button';
@@ -23,6 +22,8 @@ import { Calendar, Plus, ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useOrganization } from '@/contexts/organization-context';
 
 const LAYER_DEFINITIONS = [
   { id: 'l1', label: 'TÀI CHÍNH', y: 50, color: '#F59E0B', category: 'TÀI CHÍNH' },
@@ -31,8 +32,37 @@ const LAYER_DEFINITIONS = [
   { id: 'l4', label: 'HỌC HỎI & PHÁT TRIỂN', y: 800, color: '#EC4899', category: 'HỌC HỎI & PHÁT TRIỂN' }, // Renaming to what user likely sees as "CON NGƯỜI"
 ];
 
+const categoryMap: Record<string, StrategyNodeData['category']> = {
+  financial: 'TÀI CHÍNH',
+  external: 'KHÁCH HÀNG',
+  internal: 'QUY TRÌNH NỘI BỘ',
+  learning: 'HỌC HỎI & PHÁT TRIỂN',
+};
+
+const statusMap: Record<string, StrategyNodeData['status']> = {
+  on_track: 'on-track',
+  at_risk: 'at-risk',
+  off_track: 'off-track',
+  completed: 'on-track',
+};
+
+const parseJsonArray = <T,>(value: unknown, fallback: T[] = []) => {
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as T[];
+      return Array.isArray(parsed) ? parsed : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+};
+
 // Helper to get nodes with labels injected
-const getInitialNodesWithLabels = () => {
+const getNodesWithLabels = (nodes: Node[]) => {
   const labelNodes: Node[] = LAYER_DEFINITIONS.map(layer => ({
     id: `label-${layer.id}`,
     type: 'layerLabel',
@@ -41,11 +71,21 @@ const getInitialNodesWithLabels = () => {
     draggable: false,
     selectable: false,
   }));
-  return [...initialNodes, ...labelNodes];
+  return [...nodes, ...labelNodes];
 };
 
-function StrategyMapContent({ filter, onAddNode }: { filter: string, onAddNode: () => void }) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(getInitialNodesWithLabels());
+function StrategyMapContent({
+  filter,
+  onAddNode,
+  nodes: initialNodes,
+  edges: initialEdges,
+}: {
+  filter: string;
+  onAddNode: () => void;
+  nodes: Node[];
+  edges: Edge[];
+}) {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeData, setSelectedNodeData] = useState<StrategyNodeData | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -71,6 +111,14 @@ function StrategyMapContent({ filter, onAddNode }: { filter: string, onAddNode: 
       return { ...node, hidden };
     }));
   }, [filter, setNodes]);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
 
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
@@ -116,8 +164,111 @@ function StrategyMapContent({ filter, onAddNode }: { filter: string, onAddNode: 
 export default function StrategyMapPage() {
   const [filter, setFilter] = useState('Tất cả');
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [year, setYear] = useState('FY 2024');
   const [selectedPillar, setSelectedPillar] = useState<string | null>('learning'); // Default to learning as per design initially
+  const [flowNodes, setFlowNodes] = useState<Node[]>([]);
+  const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const {
+    organization,
+    activeFiscalYear,
+    setActiveFiscalYear,
+    isLoading: isOrgLoading,
+    yearOptions,
+  } = useOrganization();
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadStrategyMap = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        let nodesQuery = supabase
+          .from('okr_strategy_nodes')
+          .select('*, owner:okr_users(*)')
+          .eq('organization_id', orgId);
+
+        if (activeFiscalYear) {
+          nodesQuery = nodesQuery.eq('fiscal_year', activeFiscalYear);
+        }
+
+        const { data: nodesData, error: nodesError } = await nodesQuery;
+
+        if (nodesError) {
+          throw nodesError;
+        }
+
+        const { data: edgesData, error: edgesError } = await supabase
+          .from('okr_strategy_edges')
+          .select('*');
+
+        if (edgesError) {
+          throw edgesError;
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        const mappedNodes = (nodesData || []).map((node) => ({
+          id: node.id,
+          type: 'goal',
+          position: {
+            x: Number(node.position_x || 0),
+            y: Number(node.position_y || 0),
+          },
+          data: {
+            id: node.id,
+            label: node.label || '',
+            category: categoryMap[node.category] || 'TÀI CHÍNH',
+            status: statusMap[node.status] || 'on-track',
+            progress: Number(node.progress || 0),
+            ownerName: node.owner?.full_name || '',
+            ownerRole: node.owner?.role || '',
+            ownerAvatar: node.owner?.avatar_url || '',
+            code: node.code || '',
+            goals: parseJsonArray(node.goals_data, []),
+            strategies: parseJsonArray(node.strategies_data, []),
+          } as StrategyNodeData,
+        }));
+
+        const nodeIds = new Set(mappedNodes.map((node) => node.id));
+        const mappedEdges = (edgesData || [])
+          .filter((edge) => nodeIds.has(edge.source_node_id) && nodeIds.has(edge.target_node_id))
+          .map((edge) => ({
+          id: edge.id,
+          source: edge.source_node_id,
+          target: edge.target_node_id,
+          label: edge.label || undefined,
+          type: 'smoothstep',
+          animated: true,
+          }));
+
+        setFlowNodes(getNodesWithLabels(mappedNodes));
+        setFlowEdges(mappedEdges);
+      } catch (error) {
+        console.error('Failed to load strategy map', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadStrategyMap();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [organization?.id, activeFiscalYear, isOrgLoading]);
 
   const handleAddNode = () => {
     setIsAddOpen(true);
@@ -138,7 +289,7 @@ export default function StrategyMapPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900">Bản đồ Chiến lược - Tổng công ty</h1>
             <span className="px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs font-bold ring-1 ring-green-600/20">
-              {year === 'FY 2024' ? 'Năm tài chính 2024' : year}
+              {activeFiscalYear ? `Năm tài chính ${activeFiscalYear}` : 'Năm tài chính'}
             </span>
           </div>
         </div>
@@ -147,14 +298,19 @@ export default function StrategyMapPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="bg-white min-w-[120px] justify-between">
-                <span className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-slate-500" /> {year}</span>
+                <span className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-2 text-slate-500" />
+                  {activeFiscalYear ? `FY ${activeFiscalYear}` : 'Chọn năm'}
+                </span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[120px]">
-              <DropdownMenuItem onClick={() => setYear('FY 2025')}>FY 2025</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setYear('FY 2024')}>FY 2024</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setYear('FY 2023')}>FY 2023</DropdownMenuItem>
+              {yearOptions.map((year) => (
+                <DropdownMenuItem key={year} onClick={() => setActiveFiscalYear(year)}>
+                  FY {year}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -185,9 +341,18 @@ export default function StrategyMapPage() {
 
       {/* Main Map Area */}
       <div className="flex-1 w-full min-h-0 border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden p-1 relative">
-        <ReactFlowProvider>
-          <StrategyMapContent filter={filter} onAddNode={handleAddNode} />
-        </ReactFlowProvider>
+        {isLoading ? (
+          <div className="h-full flex items-center justify-center text-slate-400">Loading...</div>
+        ) : (
+          <ReactFlowProvider>
+            <StrategyMapContent
+              filter={filter}
+              onAddNode={handleAddNode}
+              nodes={flowNodes}
+              edges={flowEdges}
+            />
+          </ReactFlowProvider>
+        )}
       </div>
 
       {/* Add Goal Dialog Placeholder */}

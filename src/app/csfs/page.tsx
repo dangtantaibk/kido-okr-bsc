@@ -51,19 +51,20 @@ import {
   Users, // Import Users
 } from 'lucide-react';
 import {
-  csfs,
-  okrs,
   csfStatusLabels,
   csfStatusColors,
   priorityColors,
   priorityLabels,
   CSFStatus,
-  CSF,
   statusColors,
   statusLabels,
 } from '@/data/mock-data';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { useRouter } from 'next/navigation'; // Import useRouter
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getCSFs } from '@/lib/supabase/queries/csfs';
+import { mapCSFRow, type CSFWithRelations } from '@/lib/supabase/mappers';
+import { useOrganization } from '@/contexts/organization-context';
 
 const statusColumns: { status: CSFStatus; label: string; icon: React.ElementType; color: string; headerColor: string }[] = [
   { status: 'not_started', label: 'Chưa bắt đầu', icon: Circle, color: 'bg-gray-100 border-gray-300', headerColor: 'bg-gray-50' },
@@ -75,17 +76,56 @@ const statusColumns: { status: CSFStatus; label: string; icon: React.ElementType
 export default function CSFsPage() {
   const router = useRouter(); // Init router
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [managedCSFs, setManagedCSFs] = useState<CSF[]>(csfs);
+  const [managedCSFs, setManagedCSFs] = useState<CSFWithRelations[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [selectedCSFId, setSelectedCSFId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const getRelatedOKRs = (relatedOKRIds: string[]) => {
-    return okrs.filter((o) => relatedOKRIds.includes(o.id));
-  };
+  useEffect(() => {
+    if (!isMounted) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadCSFs = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const csfRows = await getCSFs(supabase, orgId, activeFiscalYear);
+        if (!isActive) {
+          return;
+        }
+
+        setManagedCSFs((csfRows || []).map(mapCSFRow));
+      } catch (error) {
+        console.error('Failed to load CSFs', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadCSFs();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [isMounted, organization?.id, activeFiscalYear, isOrgLoading]);
 
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -124,9 +164,9 @@ export default function CSFsPage() {
   };
 
   const activeCSF = managedCSFs.find(c => c.id === selectedCSFId);
-  const activeRelatedOKRs = activeCSF ? getRelatedOKRs(activeCSF.relatedOKRs) : [];
+  const activeRelatedOKRs = activeCSF?.relatedOKRs ?? [];
 
-  if (!isMounted) {
+  if (!isMounted || isLoading) {
     return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
   }
 
@@ -254,7 +294,7 @@ export default function CSFsPage() {
                         {...provided.droppableProps}
                       >
                         {columnCSFs.map((csf, index) => {
-                          const relatedOKRs = getRelatedOKRs(csf.relatedOKRs);
+                          const relatedOKRs = csf.relatedOKRs;
                           return (
                             <Draggable key={csf.id} draggableId={csf.id} index={index}>
                               {(provided, snapshot) => (
@@ -472,7 +512,7 @@ export default function CSFsPage() {
                             </div>
                             <div className="flex items-center justify-between text-xs mb-1.5 pl-9">
                               <span className="text-slate-500">
-                                {okr.owner} • {okr.quarter}
+                                {perspectiveLabels[okr.perspective]}
                               </span>
                               <Badge variant="outline" className={`${statusColors[okr.status]} border-0 text-white text-[10px] px-1.5 h-4`}>
                                 {statusLabels[okr.status]}

@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { StrategyNodeData } from './mock-data';
+import type { StrategyNodeData } from './mock-data';
 
 // --- Utils ---
 const getStatusColor = (status: StrategyNodeData['status']) => {

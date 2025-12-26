@@ -4,6 +4,7 @@ import './globals.css';
 import { Sidebar } from '@/components/layout/sidebar';
 import { MainContent } from '@/components/layout/main-content';
 import { SidebarProvider } from '@/contexts/sidebar-context';
+import { OrganizationProvider } from '@/contexts/organization-context';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -29,15 +30,16 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SidebarProvider>
-          <div className="flex min-h-screen bg-slate-50">
-            <Sidebar />
-            <MainContent>
-              {children}
-            </MainContent>
-          </div>
+          <OrganizationProvider>
+            <div className="flex min-h-screen bg-slate-50">
+              <Sidebar />
+              <MainContent>
+                {children}
+              </MainContent>
+            </div>
+          </OrganizationProvider>
         </SidebarProvider>
       </body>
     </html>
   );
 }
-

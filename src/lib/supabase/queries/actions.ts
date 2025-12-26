@@ -7,8 +7,8 @@ export const getWeeklyActions = async (
   week?: string
 ) => {
   let query = supabase
-    .from('weekly_actions')
-    .select(`*, owner:users(*), linked_goal:goals(*), linked_kpi:kpis(*)`)
+    .from('okr_weekly_actions')
+    .select(`*, owner:okr_users(*), linked_goal:okr_goals(*), linked_kpi:okr_kpis(*)`)
     .eq('organization_id', organizationId);
 
   if (week) {

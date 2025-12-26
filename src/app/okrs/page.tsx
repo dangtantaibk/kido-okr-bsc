@@ -54,14 +54,18 @@ import {
   MoveRight
 } from 'lucide-react';
 import {
-  okrs,
   Perspective,
   perspectiveLabels,
   statusLabels,
   statusColors,
-  OKR
 } from '@/data/mock-data';
+import type { OKR } from '@/data/mock-data';
 import { getThemeColors } from '@/lib/theme';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getOKRsByQuarter } from '@/lib/supabase/queries/okrs';
+import { mapOKRRow } from '@/lib/supabase/mappers';
+import { useOrganization } from '@/contexts/organization-context';
+import { formatQuarterLabel, quarterOptions } from '@/lib/period';
 
 // Perspective Icons
 const perspectiveIcons = {
@@ -75,13 +79,61 @@ export default function OKRsPage() {
   const [selectedPerspective, setSelectedPerspective] = useState<Perspective | 'all'>('all');
   const [expandedOKR, setExpandedOKR] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [managedOKRs, setManagedOKRs] = useState<OKR[]>(okrs);
+  const [managedOKRs, setManagedOKRs] = useState<OKR[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [selectedOKRId, setSelectedOKRId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, isLoading: isOrgLoading, activeQuarter, activeFiscalYear } = useOrganization();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadOKRs = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const okrRows = await getOKRsByQuarter(
+          supabase,
+          activeQuarter,
+          orgId,
+          activeFiscalYear
+        );
+        if (!isActive) {
+          return;
+        }
+
+        setManagedOKRs((okrRows || []).map(mapOKRRow));
+      } catch (error) {
+        console.error('Failed to load OKRs', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadOKRs();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [isMounted, organization?.id, activeQuarter, activeFiscalYear, isOrgLoading]);
 
   const filteredOKRs =
     selectedPerspective === 'all'
@@ -137,7 +189,7 @@ export default function OKRsPage() {
   const activeTheme = activeOKR ? getThemeColors(activeOKR.perspective) : null;
 
   // If not mounted (SSR), render a placeholder or the non-dnd version to avoid hydration mismatch
-  if (!isMounted) {
+  if (!isMounted || isLoading) {
     return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
   }
 
@@ -205,20 +257,21 @@ export default function OKRsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="quarter">Quý</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn quý" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Q1 2024">Q1 2024</SelectItem>
-                        <SelectItem value="Q2 2024">Q2 2024</SelectItem>
-                        <SelectItem value="Q3 2024">Q3 2024</SelectItem>
-                        <SelectItem value="Q4 2024">Q4 2024</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="quarter">Quý</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn quý" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {quarterOptions.map((quarter) => (
+                        <SelectItem key={quarter} value={quarter}>
+                          {formatQuarterLabel(quarter, activeFiscalYear)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="owner">Người phụ trách</Label>

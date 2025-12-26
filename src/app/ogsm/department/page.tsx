@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -29,20 +29,25 @@ import {
   Filter,
 } from 'lucide-react';
 import {
-  departmentOGSMs,
-  ogsmGoals,
-  ogsmObjectives,
   perspectiveColors,
   perspectiveLabels,
   Perspective,
 } from '@/data/mock-data';
+import type { DepartmentOGSM, OGSMGoal, OGSMObjective } from '@/data/mock-data';
 import Link from 'next/link';
 import { InteractiveGraph } from '../interactive-graph';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getObjectivesWithCascade } from '@/lib/supabase/queries/ogsm';
+import { useOrganization } from '@/contexts/organization-context';
 
 // --- Helpers ---
 
 // Logic to derive Perspective from the linked Company Goal
-const getPerspectiveForDept = (linkedGoalId?: string): Perspective | null => {
+const getPerspectiveForDept = (
+  linkedGoalId: string | undefined,
+  ogsmGoals: OGSMGoal[],
+  ogsmObjectives: OGSMObjective[]
+): Perspective | null => {
   if (!linkedGoalId) return null;
   const goal = ogsmGoals.find(g => g.id === linkedGoalId);
   if (!goal) return null;
@@ -72,17 +77,110 @@ const getThemeColors = (p: Perspective) => {
 
 export default function OGSMDepartmentPage() {
   const [selectedDept, setSelectedDept] = useState<string>('all');
+  const [departmentOGSMs, setDepartmentOGSMs] = useState<DepartmentOGSM[]>([]);
+  const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
+  const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const supabase = getSupabaseBrowserClient();
+        const orgId = organization?.id;
+
+        if (!orgId) {
+          return;
+        }
+
+        const objectiveRows = await getObjectivesWithCascade(
+          supabase,
+          orgId,
+          activeFiscalYear
+        );
+        if (!isActive) {
+          return;
+        }
+
+        const objectives = (objectiveRows || []).map((obj: any) => ({
+          id: obj.id,
+          name: obj.name || '',
+          description: obj.description || '',
+          perspective: obj.perspective || 'financial',
+        }));
+
+        const goals = (objectiveRows || []).flatMap((obj: any) =>
+          (obj.goals || []).map((goal: any) => ({
+            id: goal.id,
+            objectiveId: obj.id,
+            name: goal.name || '',
+            target:
+              goal.target_text ||
+              (goal.target_value
+                ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
+                : ''),
+            owner: goal.owner?.full_name || goal.owner?.email || '',
+            progress: Number(goal.progress || 0),
+          }))
+        );
+
+        const departmentRows = (objectiveRows || []).flatMap((obj: any) =>
+          (obj.goals || []).flatMap((goal: any) =>
+            (goal.department_ogsms || []).map((dept: any) => ({
+              id: dept.id,
+              department: dept.department?.name || '',
+              purpose: dept.purpose || '',
+              objective: dept.objective || '',
+              strategy: dept.strategy || '',
+              measures: (dept.measures || []).map((measure: any) => measure?.name || ''),
+              owner: dept.owner?.full_name || dept.owner?.email || '',
+              progress: Number(dept.progress || 0),
+              linkedGoalId: dept.linked_goal_id || goal.id,
+              kpiIds: (dept.measures || [])
+                .map((measure: any) => measure?.kpi_id)
+                .filter(Boolean),
+            }))
+          )
+        );
+
+        setOgsmObjectives(objectives);
+        setOgsmGoals(goals);
+        setDepartmentOGSMs(departmentRows);
+      } catch (error) {
+        console.error('Failed to load department OGSM data', error);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (!isOrgLoading) {
+      loadData();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [organization?.id, activeFiscalYear, isOrgLoading]);
 
   // Extract unique departments
   const uniqueDepartments = useMemo(() => {
     return Array.from(new Set(departmentOGSMs.map(d => d.department))).sort();
-  }, []);
+  }, [departmentOGSMs]);
 
   // Filter data
   const filteredData = useMemo(() => {
     if (selectedDept === 'all') return departmentOGSMs;
     return departmentOGSMs.filter(d => d.department === selectedDept);
-  }, [selectedDept]);
+  }, [selectedDept, departmentOGSMs]);
+
+  if (isLoading) {
+    return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen">
@@ -156,7 +254,9 @@ export default function OGSMDepartmentPage() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
               {filteredData.map((dept) => {
-                const perspective = getPerspectiveForDept(dept.linkedGoalId) || 'financial'; // Fallback to 'financial' if orphan
+                const perspective =
+                  getPerspectiveForDept(dept.linkedGoalId, ogsmGoals, ogsmObjectives) ||
+                  'financial'; // Fallback to 'financial' if orphan
                 const theme = getThemeColors(perspective);
 
                 return (
@@ -228,8 +328,8 @@ export default function OGSMDepartmentPage() {
                           <span className="text-sm font-bold text-slate-800">Đo lường (Metric)</span>
                         </div>
                         <div className="pl-6 flex flex-wrap gap-2">
-                          {dept.measures.map(m => (
-                            <Badge key={m} variant="secondary" className={`${theme.badgeBg} ${theme.badgeText} border-0 hover:scale-105 transition-transform`}>
+                          {dept.measures.map((m, index) => (
+                            <Badge key={`${dept.id}-measure-${index}`} variant="secondary" className={`${theme.badgeBg} ${theme.badgeText} border-0 hover:scale-105 transition-transform`}>
                               {m}
                             </Badge>
                           ))}
