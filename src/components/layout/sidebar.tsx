@@ -45,7 +45,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Tổng Công ty', href: '/ogsm', icon: Building2 },
       { name: 'Cấp Phòng ban', href: '/ogsm/department', icon: Users2 },
-      { name: 'Visual Map', href: '/strategy-map', icon: Map },
+      // { name: 'Visual Map', href: '/strategy-map', icon: Map },
     ],
   },
   {
@@ -75,6 +75,11 @@ const navigationGroups: NavGroup[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, toggleCollapsed } = useSidebar();
+  const isLoginRoute = pathname === '/login';
+
+  if (isLoginRoute) {
+    return null;
+  }
 
   return (
     <aside

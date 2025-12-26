@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getFirstOrganization } from '@/lib/supabase/queries/organizations';
 import { buildYearOptions, parseQuarterLabel } from '@/lib/period';
+import { useAuth } from '@/contexts/auth-context';
 
 type OrganizationRecord = {
   id: string;
@@ -61,8 +62,19 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const [activeFiscalYear, setActiveFiscalYear] = useState(() => getStoredValue(STORAGE_KEYS.fiscalYear));
   const [activeQuarter, setActiveQuarter] = useState(() => getStoredValue(STORAGE_KEYS.quarter));
   const initialized = useRef(false);
+  const { session, isLoading: isAuthLoading } = useAuth();
+
+  useEffect(() => {
+    if (!session) {
+      initialized.current = false;
+    }
+  }, [session]);
 
   const refreshOrganization = useCallback(async () => {
+    if (!session) {
+      setOrganization(null);
+      return;
+    }
     const supabase = getSupabaseBrowserClient();
     const org = await getFirstOrganization(supabase);
     setOrganization(org);
@@ -73,12 +85,20 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       setActiveQuarter((prev) => prev || quarter);
       initialized.current = true;
     }
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     let isActive = true;
 
     const loadOrganization = async () => {
+      if (isAuthLoading) {
+        return;
+      }
+      if (!session) {
+        setOrganization(null);
+        setIsLoading(false);
+        return;
+      }
       try {
         await refreshOrganization();
       } catch (error) {
@@ -98,7 +118,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     return () => {
       isActive = false;
     };
-  }, [refreshOrganization]);
+  }, [refreshOrganization, isAuthLoading, session]);
 
   useEffect(() => {
     if (activeFiscalYear) {
@@ -114,6 +134,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   const updateOrganization = useCallback(
     async (updates: Partial<OrganizationRecord>) => {
+      if (!session) {
+        return null;
+      }
       if (!organization?.id) {
         return null;
       }

@@ -60,8 +60,32 @@ import { mapKpiRow } from '@/lib/supabase/mappers';
 import { useOrganization } from '@/contexts/organization-context';
 
 // --- Logic Helpers (Reused) ---
+const formatOwnerLabel = (owner?: { full_name?: string | null; email?: string | null; role?: string | null } | null) => {
+  const name = owner?.full_name || owner?.email || '';
+  const role = owner?.role || '';
+
+  if (!name) {
+    return role;
+  }
+
+  return role ? `${name} (${role})` : name;
+};
+
+type MeasureForm = {
+  id?: string;
+  name: string;
+  kpiId?: string | null;
+};
+
+type DepartmentOGSMRecord = DepartmentOGSM & {
+  departmentId?: string | null;
+  ownerId?: string | null;
+  linkedGoalId?: string | null;
+  measureItems: MeasureForm[];
+};
+
 const getAlignmentStatus = (
-  deptItem: DepartmentOGSM,
+  deptItem: DepartmentOGSMRecord,
   ogsmGoals: OGSMGoal[],
   kpis: KPI[]
 ) => {
@@ -326,13 +350,23 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 };
 
 // --- Main Component ---
-export function InteractiveGraph({ filterDepartment }: { filterDepartment?: string }) {
+export function InteractiveGraph({
+  filterDepartment,
+  onDepartmentSelect,
+  onObjectiveSelect,
+  onGoalSelect,
+}: {
+  filterDepartment?: string;
+  onDepartmentSelect?: (dept: DepartmentOGSMRecord) => void;
+  onObjectiveSelect?: (objective: OGSMObjective) => void;
+  onGoalSelect?: (goal: OGSMGoal) => void;
+}) {
   const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('LR');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const graphContainerRef = React.useRef<HTMLDivElement>(null);
   const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
   const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
-  const [departmentOGSMs, setDepartmentOGSMs] = useState<DepartmentOGSM[]>([]);
+  const [departmentOGSMs, setDepartmentOGSMs] = useState<DepartmentOGSMRecord[]>([]);
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
@@ -376,7 +410,7 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
               (goal.target_value
                 ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
                 : ''),
-            owner: goal.owner?.full_name || goal.owner?.email || '',
+            owner: formatOwnerLabel(goal.owner),
             progress: Number(goal.progress || 0),
           }))
         );
@@ -386,13 +420,22 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
             (goal.department_ogsms || []).map((dept: any) => ({
               id: dept.id,
               department: dept.department?.name || '',
+              departmentId: dept.department_id || dept.department?.id || null,
               purpose: dept.purpose || '',
               objective: dept.objective || '',
               strategy: dept.strategy || '',
               measures: (dept.measures || []).map((measure: any) => measure?.name || ''),
-              owner: dept.owner?.full_name || dept.owner?.email || '',
+              measureItems: (dept.measures || [])
+                .map((measure: any) => ({
+                  id: measure?.id,
+                  name: measure?.name || '',
+                  kpiId: measure?.kpi_id || null,
+                }))
+                .filter((measure: { id?: string }) => Boolean(measure.id)),
+              owner: formatOwnerLabel(dept.owner),
+              ownerId: dept.owner_id || dept.owner?.id || null,
               progress: Number(dept.progress || 0),
-              linkedGoalId: dept.linked_goal_id || goal.id,
+              linkedGoalId: dept.linked_goal_id ?? goal.id,
               kpiIds: (dept.measures || [])
                 .map((measure: any) => measure?.kpi_id)
                 .filter(Boolean),
@@ -633,6 +676,24 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
     setLayoutDirection(prev => prev === 'LR' ? 'TB' : 'LR');
   };
 
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (!node.data?.type || !node.data?.content) {
+        return;
+      }
+      if (node.data.type === 'dept' && onDepartmentSelect) {
+        onDepartmentSelect(node.data.content as DepartmentOGSMRecord);
+      }
+      if (node.data.type === 'objective' && onObjectiveSelect) {
+        onObjectiveSelect(node.data.content as OGSMObjective);
+      }
+      if (node.data.type === 'goal' && onGoalSelect) {
+        onGoalSelect(node.data.content as OGSMGoal);
+      }
+    },
+    [onDepartmentSelect, onObjectiveSelect, onGoalSelect]
+  );
+
   if (isLoading) {
     return (
       <div className="h-[600px] flex items-center justify-center text-slate-400">
@@ -651,6 +712,7 @@ export function InteractiveGraph({ filterDepartment }: { filterDepartment?: stri
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.1}

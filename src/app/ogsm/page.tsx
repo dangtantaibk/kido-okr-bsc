@@ -6,18 +6,21 @@ import {
   ArrowRight,
   ChevronRight,
   ChevronDown,
-  Building2,
   Users,
   Sparkles,
   Globe,
   Wallet,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import {
   perspectiveLabels,
   perspectiveColors,
   Perspective,
 } from '@/data/mock-data';
-import type { OGSMGoal, OGSMObjective, OGSMStrategy } from '@/data/mock-data';
+import type { OGSMGoal, OGSMObjective } from '@/data/mock-data';
 import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +28,25 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useEffect, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useCallback, useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getObjectivesWithCascade } from '@/lib/supabase/queries/ogsm';
 import { useOrganization } from '@/contexts/organization-context';
@@ -58,18 +79,84 @@ const getThemeColors = (p: Perspective) => {
   };
 };
 
+const formatOwnerLabel = (owner?: { full_name?: string | null; email?: string | null; role?: string | null } | null) => {
+  const name = owner?.full_name || owner?.email || '';
+  const role = owner?.role || '';
+
+  if (!name) {
+    return role;
+  }
+
+  return role ? `${name} (${role})` : name;
+};
+
 import { InteractiveGraph } from './interactive-graph';
 
 // --- Sub-components ---
+type StrategyMeasure = {
+  id: string;
+  name: string;
+};
+
+type OGSMStrategyRecord = {
+  id: string;
+  goalId: string;
+  name: string;
+  measures: StrategyMeasure[];
+};
+
+type DialogType = 'objective' | 'goal' | 'strategy' | 'measure';
+type DialogMode = 'create' | 'edit';
+
+type DialogState = {
+  type: DialogType;
+  mode: DialogMode;
+  targetId?: string;
+  objectiveId?: string;
+  goalId?: string;
+  strategyId?: string;
+};
+
+type FormState = {
+  name: string;
+  description: string;
+  perspective: Perspective;
+  targetText: string;
+  progress: string;
+};
+
+const defaultFormState: FormState = {
+  name: '',
+  description: '',
+  perspective: 'financial',
+  targetText: '',
+  progress: '0',
+};
 
 const GoalItem = ({
   goal,
   theme,
   strategies,
+  onEditGoal,
+  onDeleteGoal,
+  onAddStrategy,
+  onEditStrategy,
+  onDeleteStrategy,
+  onAddMeasure,
+  onEditMeasure,
+  onDeleteMeasure,
 }: {
   goal: OGSMGoal;
-  theme: ReturnType<typeof getThemeColors>;
-  strategies: OGSMStrategy[];
+  theme: ReturnType<typeof getThemeColors> | null;
+  strategies: OGSMStrategyRecord[];
+  onEditGoal: (goal: OGSMGoal) => void;
+  onDeleteGoal: (goalId: string) => void;
+  onAddStrategy: (goalId: string) => void;
+  onEditStrategy: (strategy: OGSMStrategyRecord) => void;
+  onDeleteStrategy: (strategyId: string) => void;
+  onAddMeasure: (strategyId: string) => void;
+  onEditMeasure: (measure: StrategyMeasure) => void;
+  onDeleteMeasure: (measureId: string) => void;
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const filteredStrategies = strategies.filter(s => s.goalId === goal.id);
@@ -82,14 +169,34 @@ const GoalItem = ({
           <GoalIcon className="h-5 w-5" />
         </div>
         <div className="flex-1">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-semibold text-slate-900 text-sm">{goal.name}</p>
               <p className="text-xs text-slate-500 mt-0.5">Owner: {goal.owner}</p>
             </div>
-            <Badge className={`${theme ? theme.badgeBg : 'bg-slate-100'} ${theme ? theme.badgeText : 'text-slate-700'} text-xs font-bold border-0 shadow-sm whitespace-nowrap`}>
-              {goal.target}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={`${theme ? theme.badgeBg : 'bg-slate-100'} ${theme ? theme.badgeText : 'text-slate-700'} text-xs font-bold border-0 shadow-sm whitespace-nowrap`}>
+                {goal.target}
+              </Badge>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-slate-500 hover:text-slate-900"
+                onClick={() => onEditGoal(goal)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-slate-500 hover:text-red-600"
+                onClick={() => onDeleteGoal(goal.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
 
           {/* Progress */}
@@ -106,16 +213,27 @@ const GoalItem = ({
             </div>
           </div>
 
-          {/* Collapsible Trigger */}
-          {filteredStrategies.length > 0 && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className={`mt-3 flex items-center gap-1 text-xs font-medium ${theme ? theme.subTextColor : 'text-slate-500'} hover:text-slate-800 transition-colors focus:outline-none`}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {filteredStrategies.length > 0 && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className={`flex items-center gap-1 text-xs font-medium ${theme ? theme.subTextColor : 'text-slate-500'} hover:text-slate-800 transition-colors focus:outline-none`}
+              >
+                {isExpanded ? 'Hide Strategies' : 'Show Strategies'}
+                <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+              </button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] font-semibold"
+              onClick={() => onAddStrategy(goal.id)}
             >
-              {isExpanded ? 'Hide Strategies' : 'Show Strategies'}
-              <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-            </button>
-          )}
+              <Plus className="h-3 w-3" />
+              Thêm Strategy
+            </Button>
+          </div>
 
           {/* Strategies & Measures (Collapsible) */}
           {filteredStrategies.length > 0 && isExpanded && (
@@ -126,13 +244,62 @@ const GoalItem = ({
                     <ArrowRight className={`h-2.5 w-2.5 ${theme ? theme.iconColor : 'text-slate-500'}`} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs font-semibold text-slate-800">{strategy.name}</p>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-semibold text-slate-800">{strategy.name}</p>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-slate-500 hover:text-slate-900"
+                          onClick={() => onEditStrategy(strategy)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-slate-500 hover:text-red-600"
+                          onClick={() => onDeleteStrategy(strategy.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
                       {strategy.measures.map((measure) => (
-                        <Badge key={measure} variant="outline" className={`text-[10px] px-1.5 py-0 ${theme ? theme.lightBg : 'bg-white'} ${theme ? theme.subTextColor : 'text-slate-600'} border-0 font-medium`}>
-                          {measure}
+                        <Badge
+                          key={measure.id}
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 ${theme ? theme.lightBg : 'bg-white'} ${theme ? theme.subTextColor : 'text-slate-600'} border-0 font-medium`}
+                        >
+                          <button
+                            type="button"
+                            className="hover:underline"
+                            onClick={() => onEditMeasure(measure)}
+                          >
+                            {measure.name}
+                          </button>
+                          <button
+                            type="button"
+                            className="text-slate-400 hover:text-red-500"
+                            onClick={() => onDeleteMeasure(measure.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         </Badge>
                       ))}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] font-semibold"
+                        onClick={() => onAddMeasure(strategy.id)}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Thêm metric
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -146,91 +313,386 @@ const GoalItem = ({
 };
 
 export default function OGSMCompanyPage() {
+  const [activeTab, setActiveTab] = useState<'list' | 'graph'>('list');
   const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
   const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
-  const [ogsmStrategies, setOgsmStrategies] = useState<OGSMStrategy[]>([]);
+  const [ogsmStrategies, setOgsmStrategies] = useState<OGSMStrategyRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [graphRefreshKey, setGraphRefreshKey] = useState(0);
+  const [dialogState, setDialogState] = useState<DialogState | null>(null);
+  const [formState, setFormState] = useState<FormState>(defaultFormState);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
 
-  useEffect(() => {
-    let isActive = true;
+  const loadOGSM = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const supabase = getSupabaseBrowserClient();
+      const orgId = organization?.id;
 
-    const loadOGSM = async () => {
-      try {
-        setIsLoading(true);
-        const supabase = getSupabaseBrowserClient();
-        const orgId = organization?.id;
-
-        if (!orgId) {
-          return;
-        }
-
-        const objectiveRows = await getObjectivesWithCascade(
-          supabase,
-          orgId,
-          activeFiscalYear
-        );
-        if (!isActive) {
-          return;
-        }
-
-        const objectives = (objectiveRows || []).map((obj: any) => ({
-          id: obj.id,
-          name: obj.name || '',
-          description: obj.description || '',
-          perspective: obj.perspective || 'financial',
-        }));
-
-        const goals = (objectiveRows || []).flatMap((obj: any) =>
-          (obj.goals || []).map((goal: any) => ({
-            id: goal.id,
-            objectiveId: obj.id,
-            name: goal.name || '',
-            target:
-              goal.target_text ||
-              (goal.target_value
-                ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
-                : ''),
-            owner: goal.owner?.full_name || goal.owner?.email || '',
-            progress: Number(goal.progress || 0),
-          }))
-        );
-
-        const strategies = (objectiveRows || []).flatMap((obj: any) =>
-          (obj.goals || []).flatMap((goal: any) =>
-            (goal.strategies || []).map((strategy: any) => ({
-              id: strategy.id,
-              goalId: goal.id,
-              name: strategy.name || '',
-              measures: (strategy.measures || []).map((measure: any) => measure?.name || ''),
-            }))
-          )
-        );
-
-        setOgsmObjectives(objectives);
-        setOgsmGoals(goals);
-        setOgsmStrategies(strategies);
-      } catch (error) {
-        console.error('Failed to load OGSM data', error);
-      } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
+      if (!orgId) {
+        return;
       }
-    };
 
+      const objectiveRows = await getObjectivesWithCascade(
+        supabase,
+        orgId,
+        activeFiscalYear
+      );
+
+      const objectives = (objectiveRows || []).map((obj: any) => ({
+        id: obj.id,
+        name: obj.name || '',
+        description: obj.description || '',
+        perspective: obj.perspective || 'financial',
+      }));
+
+      const goals = (objectiveRows || []).flatMap((obj: any) =>
+        (obj.goals || []).map((goal: any) => ({
+          id: goal.id,
+          objectiveId: obj.id,
+          name: goal.name || '',
+          target:
+            goal.target_text ||
+            (goal.target_value
+              ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
+              : ''),
+          owner: formatOwnerLabel(goal.owner),
+          progress: Number(goal.progress || 0),
+        }))
+      );
+
+      const strategies = (objectiveRows || []).flatMap((obj: any) =>
+        (obj.goals || []).flatMap((goal: any) =>
+          (goal.strategies || []).map((strategy: any) => ({
+            id: strategy.id,
+            goalId: goal.id,
+            name: strategy.name || '',
+            measures: (strategy.measures || [])
+              .map((measure: any) => ({
+                id: measure?.id,
+                name: measure?.name || '',
+              }))
+              .filter((measure: { id?: string }) => Boolean(measure.id)),
+          }))
+        )
+      );
+
+      setOgsmObjectives(objectives);
+      setOgsmGoals(goals);
+      setOgsmStrategies(strategies);
+    } catch (error) {
+      console.error('Failed to load OGSM data', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [organization?.id, activeFiscalYear]);
+
+  useEffect(() => {
     if (!isOrgLoading) {
       loadOGSM();
     }
+  }, [loadOGSM, isOrgLoading]);
 
-    return () => {
-      isActive = false;
-    };
-  }, [organization?.id, activeFiscalYear, isOrgLoading]);
+  const openDialog = (state: DialogState, overrides: Partial<FormState> = {}) => {
+    setFormError(null);
+    setFormState({ ...defaultFormState, ...overrides });
+    setDialogState(state);
+  };
+
+  const closeDialog = () => {
+    setDialogState(null);
+    setFormError(null);
+  };
+
+  const openCreateObjective = () => {
+    openDialog({ type: 'objective', mode: 'create' }, { perspective: 'financial' });
+  };
+
+  const openEditObjective = (objective: OGSMObjective) => {
+    openDialog(
+      { type: 'objective', mode: 'edit', targetId: objective.id },
+      {
+        name: objective.name,
+        description: objective.description,
+        perspective: objective.perspective,
+      }
+    );
+  };
+
+  const openCreateGoal = (objectiveId: string) => {
+    openDialog({ type: 'goal', mode: 'create', objectiveId }, { progress: '0' });
+  };
+
+  const openEditGoal = (goal: OGSMGoal) => {
+    openDialog(
+      { type: 'goal', mode: 'edit', targetId: goal.id, objectiveId: goal.objectiveId },
+      {
+        name: goal.name,
+        targetText: goal.target,
+        progress: String(goal.progress ?? 0),
+      }
+    );
+  };
+
+  const openCreateStrategy = (goalId: string) => {
+    openDialog({ type: 'strategy', mode: 'create', goalId });
+  };
+
+  const openEditStrategy = (strategy: OGSMStrategyRecord) => {
+    openDialog(
+      { type: 'strategy', mode: 'edit', targetId: strategy.id, goalId: strategy.goalId },
+      { name: strategy.name }
+    );
+  };
+
+  const openCreateMeasure = (strategyId: string) => {
+    openDialog({ type: 'measure', mode: 'create', strategyId });
+  };
+
+  const openEditMeasure = (measure: StrategyMeasure) => {
+    openDialog({ type: 'measure', mode: 'edit', targetId: measure.id }, { name: measure.name });
+  };
+
+  const handleSave = async () => {
+    if (!dialogState) {
+      return;
+    }
+
+    const trimmedName = formState.name.trim();
+    if (!trimmedName) {
+      setFormError('Vui lòng nhập tên.');
+      return;
+    }
+
+    setIsSaving(true);
+    setFormError(null);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+
+      if (dialogState.type === 'objective') {
+        if (!organization?.id) {
+          throw new Error('Missing organization');
+        }
+        const payload = {
+          name: trimmedName,
+          description: formState.description.trim() || null,
+          perspective: formState.perspective,
+        };
+
+        if (dialogState.mode === 'create') {
+          const { error } = await supabase.from('okr_objectives').insert({
+            organization_id: organization.id,
+            status: 'active',
+            fiscal_year: activeFiscalYear || null,
+            ...payload,
+          });
+          if (error) {
+            throw error;
+          }
+        } else if (dialogState.targetId) {
+          const { error } = await supabase
+            .from('okr_objectives')
+            .update(payload)
+            .eq('id', dialogState.targetId);
+          if (error) {
+            throw error;
+          }
+        }
+      }
+
+      if (dialogState.type === 'goal') {
+        const progressValue = Number(formState.progress);
+        const progress = Number.isFinite(progressValue)
+          ? Math.min(100, Math.max(0, progressValue))
+          : 0;
+        const payload = {
+          name: trimmedName,
+          target_text: formState.targetText.trim() || null,
+          progress,
+        };
+
+        if (dialogState.mode === 'create') {
+          if (!dialogState.objectiveId) {
+            throw new Error('Missing objective');
+          }
+          const { error } = await supabase.from('okr_goals').insert({
+            objective_id: dialogState.objectiveId,
+            ...payload,
+          });
+          if (error) {
+            throw error;
+          }
+        } else if (dialogState.targetId) {
+          const { error } = await supabase
+            .from('okr_goals')
+            .update(payload)
+            .eq('id', dialogState.targetId);
+          if (error) {
+            throw error;
+          }
+        }
+      }
+
+      if (dialogState.type === 'strategy') {
+        const payload = { name: trimmedName };
+
+        if (dialogState.mode === 'create') {
+          if (!dialogState.goalId) {
+            throw new Error('Missing goal');
+          }
+          const { error } = await supabase.from('okr_strategies').insert({
+            goal_id: dialogState.goalId,
+            ...payload,
+          });
+          if (error) {
+            throw error;
+          }
+        } else if (dialogState.targetId) {
+          const { error } = await supabase
+            .from('okr_strategies')
+            .update(payload)
+            .eq('id', dialogState.targetId);
+          if (error) {
+            throw error;
+          }
+        }
+      }
+
+      if (dialogState.type === 'measure') {
+        const payload = { name: trimmedName };
+
+        if (dialogState.mode === 'create') {
+          if (!dialogState.strategyId) {
+            throw new Error('Missing strategy');
+          }
+          const { error } = await supabase.from('okr_strategy_measures').insert({
+            strategy_id: dialogState.strategyId,
+            ...payload,
+          });
+          if (error) {
+            throw error;
+          }
+        } else if (dialogState.targetId) {
+          const { error } = await supabase
+            .from('okr_strategy_measures')
+            .update(payload)
+            .eq('id', dialogState.targetId);
+          if (error) {
+            throw error;
+          }
+        }
+      }
+
+      await loadOGSM();
+      setGraphRefreshKey(prev => prev + 1);
+      closeDialog();
+    } catch (error) {
+      console.error('Failed to save OGSM data', error);
+      setFormError('Không thể lưu. Vui lòng thử lại.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const confirmDelete = (message: string) => {
+    return window.confirm(message);
+  };
+
+  const handleDeleteObjective = async (objectiveId: string) => {
+    if (!confirmDelete('Xóa Objective này? Các Goals/Strategies liên quan sẽ bị xóa.')) {
+      return;
+    }
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.from('okr_objectives').delete().eq('id', objectiveId);
+      if (error) {
+        throw error;
+      }
+      await loadOGSM();
+      setGraphRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to delete objective', error);
+    }
+  };
+
+  const handleDeleteGoal = async (goalId: string) => {
+    if (!confirmDelete('Xóa Goal này? Strategies/Measures liên quan sẽ bị xóa.')) {
+      return;
+    }
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.from('okr_goals').delete().eq('id', goalId);
+      if (error) {
+        throw error;
+      }
+      await loadOGSM();
+      setGraphRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to delete goal', error);
+    }
+  };
+
+  const handleDeleteStrategy = async (strategyId: string) => {
+    if (!confirmDelete('Xóa Strategy này? Measures liên quan sẽ bị xóa.')) {
+      return;
+    }
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.from('okr_strategies').delete().eq('id', strategyId);
+      if (error) {
+        throw error;
+      }
+      await loadOGSM();
+      setGraphRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to delete strategy', error);
+    }
+  };
+
+  const handleDeleteMeasure = async (measureId: string) => {
+    if (!confirmDelete('Xóa Metric này?')) {
+      return;
+    }
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.from('okr_strategy_measures').delete().eq('id', measureId);
+      if (error) {
+        throw error;
+      }
+      await loadOGSM();
+      setGraphRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to delete measure', error);
+    }
+  };
 
   const getGoalsForObjective = (objectiveId: string) => {
     return ogsmGoals.filter(g => g.objectiveId === objectiveId);
   };
+
+  const dialogLabels: Record<DialogType, string> = {
+    objective: 'Objective',
+    goal: 'Goal',
+    strategy: 'Strategy',
+    measure: 'Metric',
+  };
+
+  const dialogTitle = dialogState
+    ? `${dialogState.mode === 'create' ? 'Tạo' : 'Chỉnh sửa'} ${dialogLabels[dialogState.type]}`
+    : '';
+
+  const dialogDescription = dialogState
+    ? dialogState.type === 'objective'
+      ? 'Cập nhật thông tin mục tiêu cấp Công ty.'
+      : dialogState.type === 'goal'
+        ? 'Cập nhật mục tiêu con (Goal) và tiến độ.'
+        : dialogState.type === 'strategy'
+          ? 'Cập nhật chiến lược thực thi cho Goal.'
+          : 'Cập nhật chỉ số đo lường.'
+    : '';
 
   if (isLoading) {
     return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
@@ -263,7 +725,7 @@ export default function OGSMCompanyPage() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="list" className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'list' | 'graph')} className="w-full">
           <div className="sticky top-16 z-20 bg-slate-50/95 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 -mx-6 px-6 py-2 border-b border-slate-200 mb-6 shadow-sm transition-all">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <TabsList className="bg-white border shadow-sm self-start md:self-auto">
@@ -275,8 +737,17 @@ export default function OGSMCompanyPage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* OGSM Flow - Inline */}
               <div className="hidden md:flex items-center gap-3 text-xs">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white h-8 px-3"
+                  onClick={openCreateObjective}
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm Objective
+                </Button>
+                <div className="h-5 w-px bg-slate-200" />
                 <span className="font-semibold text-slate-400 mr-2 uppercase tracking-wider text-[10px]">OGSM Flow:</span>
                 {[
                   { label: 'Objectives', letter: 'O', color: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50' },
@@ -325,7 +796,7 @@ export default function OGSMCompanyPage() {
                     <CardHeader className={`${theme ? theme.solidBg : 'bg-slate-500'} text-white pb-5 relative overflow-hidden pt-6 px-6`}>
                       <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
                       <div className="relative z-10">
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
                               <Target className="h-5 w-5 text-white" />
@@ -339,17 +810,63 @@ export default function OGSMCompanyPage() {
                               <CardTitle className="text-lg text-white mt-1 leading-snug">{objective.name}</CardTitle>
                             </div>
                           </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-white/80 hover:text-white hover:bg-white/10"
+                              onClick={() => openEditObjective(objective)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-white/80 hover:text-white hover:bg-white/10"
+                              onClick={() => handleDeleteObjective(objective.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <p className="mt-3 text-sm text-white/80 line-clamp-2">{objective.description}</p>
                       </div>
                     </CardHeader>
 
                     <CardContent className="p-0 bg-white">
+                      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Goals</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[10px] font-semibold"
+                          onClick={() => openCreateGoal(objective.id)}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Thêm Goal
+                        </Button>
+                      </div>
                       {/* Goals List */}
                       <div className="divide-y divide-slate-100">
                         {goals.length > 0 ? (
                           goals.map(goal => (
-                            <GoalItem key={goal.id} goal={goal} theme={theme} strategies={ogsmStrategies} />
+                            <GoalItem
+                              key={goal.id}
+                              goal={goal}
+                              theme={theme}
+                              strategies={ogsmStrategies}
+                              onEditGoal={openEditGoal}
+                              onDeleteGoal={handleDeleteGoal}
+                              onAddStrategy={openCreateStrategy}
+                              onEditStrategy={openEditStrategy}
+                              onDeleteStrategy={handleDeleteStrategy}
+                              onAddMeasure={openCreateMeasure}
+                              onEditMeasure={openEditMeasure}
+                              onDeleteMeasure={handleDeleteMeasure}
+                            />
                           ))
                         ) : (
                           <div className="p-8 text-center text-slate-400 text-sm">
@@ -390,9 +907,111 @@ export default function OGSMCompanyPage() {
                 </span>
               </p>
             </div>
-            <InteractiveGraph />
+            <InteractiveGraph
+              key={graphRefreshKey}
+              onObjectiveSelect={openEditObjective}
+              onGoalSelect={openEditGoal}
+            />
           </TabsContent>
         </Tabs>
+
+        <Dialog
+          open={!!dialogState}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeDialog();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle>{dialogTitle}</DialogTitle>
+              {dialogDescription ? <DialogDescription>{dialogDescription}</DialogDescription> : null}
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ogsm-name">Tên</Label>
+                <Input
+                  id="ogsm-name"
+                  value={formState.name}
+                  onChange={(event) => setFormState(prev => ({ ...prev, name: event.target.value }))}
+                  placeholder="Nhập tên..."
+                />
+              </div>
+
+              {dialogState?.type === 'objective' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="ogsm-description">Mô tả</Label>
+                    <Textarea
+                      id="ogsm-description"
+                      value={formState.description}
+                      onChange={(event) => setFormState(prev => ({ ...prev, description: event.target.value }))}
+                      placeholder="Nhập mô tả..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Góc nhìn</Label>
+                    <Select
+                      value={formState.perspective}
+                      onValueChange={(value) =>
+                        setFormState(prev => ({ ...prev, perspective: value as Perspective }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn góc nhìn" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(perspectiveLabels) as Perspective[]).map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {perspectiveLabels[p]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {dialogState?.type === 'goal' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="ogsm-target">Target</Label>
+                    <Input
+                      id="ogsm-target"
+                      value={formState.targetText}
+                      onChange={(event) => setFormState(prev => ({ ...prev, targetText: event.target.value }))}
+                      placeholder="Ví dụ: +10% hoặc 100% quy trình"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ogsm-progress">Progress (%)</Label>
+                    <Input
+                      id="ogsm-progress"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={formState.progress}
+                      onChange={(event) => setFormState(prev => ({ ...prev, progress: event.target.value }))}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {formError ? <p className="text-xs text-red-600">{formError}</p> : null}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeDialog} disabled={isSaving}>
+                Hủy
+              </Button>
+              <Button type="button" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Đang lưu...' : 'Lưu'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

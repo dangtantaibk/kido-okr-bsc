@@ -5,6 +5,8 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { MainContent } from '@/components/layout/main-content';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { OrganizationProvider } from '@/contexts/organization-context';
+import { AuthProvider } from '@/contexts/auth-context';
+import { AuthGuard } from '@/components/auth/auth-guard';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -30,14 +32,16 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SidebarProvider>
-          <OrganizationProvider>
-            <div className="flex min-h-screen bg-slate-50">
-              <Sidebar />
-              <MainContent>
-                {children}
-              </MainContent>
-            </div>
-          </OrganizationProvider>
+          <AuthProvider>
+            <OrganizationProvider>
+              <div className="flex min-h-screen bg-slate-50">
+                <Sidebar />
+                <MainContent>
+                  <AuthGuard>{children}</AuthGuard>
+                </MainContent>
+              </div>
+            </OrganizationProvider>
+          </AuthProvider>
         </SidebarProvider>
       </body>
     </html>

@@ -30,6 +30,17 @@ const toString = (value: unknown) => {
   return String(value);
 };
 
+const formatUserLabel = (user: { full_name?: unknown; email?: unknown; role?: unknown } | null | undefined) => {
+  const name = toString(user?.full_name || user?.email);
+  const role = toString(user?.role);
+
+  if (!name) {
+    return role;
+  }
+
+  return role ? `${name} (${role})` : name;
+};
+
 const parseJsonArray = <T>(value: JsonValue | undefined | null, fallback: T[] = []): T[] => {
   if (Array.isArray(value)) {
     return value as T[];
@@ -57,7 +68,7 @@ export const mapOKRRow = (row: any): OKR => {
     quarter: quarterLabel,
     status: (row?.status as OKRStatus) || 'on_track',
     progress: toNumber(row?.progress),
-    owner: toString(row?.owner?.full_name || row?.owner?.email),
+    owner: formatUserLabel(row?.owner),
     dueDate: toString(row?.due_date),
     linkedGoalId: row?.linked_goal_id || undefined,
     keyResults: (row?.key_results || []).map((kr: any) => ({
@@ -92,7 +103,7 @@ export const mapCSFRow = (row: any): CSFWithRelations => {
     description: toString(row?.description),
     status: (row?.status as CSFStatus) || 'not_started',
     priority: (row?.priority as Priority) || 'medium',
-    assignee: toString(row?.assignee?.full_name || row?.assignee?.email),
+    assignee: formatUserLabel(row?.assignee),
     team: toString(row?.department?.name),
     dueDate: toString(row?.due_date),
     progress: toNumber(row?.progress),
@@ -137,7 +148,7 @@ export const mapWeeklyActionRow = (row: any): WeeklyAction => {
     linkedKpiId: row?.linked_kpi_id ?? null,
     solution: toString(row?.solution),
     activity: toString(row?.activity),
-    owner: toString(row?.owner?.full_name || row?.owner?.email),
+    owner: formatUserLabel(row?.owner),
     status: (row?.status as ActionStatus) || 'pending',
     result: toString(row?.result),
   };
@@ -150,7 +161,7 @@ export const mapFishboneRow = (row: any): FishboneItem => {
     factor: toString(row?.factor) as FishboneItem['factor'],
     problem: toString(row?.problem),
     action: toString(row?.action),
-    owner: toString(row?.owner?.full_name || row?.owner?.email),
+    owner: formatUserLabel(row?.owner),
     deadline: toString(row?.deadline),
     result: toString(row?.expected_result || row?.actual_result),
     status: (row?.status as ActionStatus) || 'pending',

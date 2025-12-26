@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS okr_departments (
 
 CREATE TABLE IF NOT EXISTS okr_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id UUID UNIQUE,
   organization_id UUID REFERENCES okr_organizations(id) ON DELETE CASCADE,
   department_id UUID REFERENCES okr_departments(id),
   email TEXT UNIQUE NOT NULL,
@@ -79,6 +80,15 @@ DO $$ BEGIN
   ALTER TABLE okr_departments
   ADD CONSTRAINT fk_head_user
   FOREIGN KEY (head_user_id) REFERENCES okr_users(id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+ALTER TABLE okr_users ADD COLUMN IF NOT EXISTS auth_user_id UUID;
+
+DO $$ BEGIN
+  ALTER TABLE okr_users
+  ADD CONSTRAINT fk_okr_users_auth_user
+  FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -1227,6 +1237,261 @@ JOIN okr_strategy_nodes t ON t.code = 'F1.0'
 WHERE s.code = 'C2.1';
 
 -- =====================
+-- KIDO GROUP 2026 STRATEGIC DATA SEED (FIXED ENUM ERROR)
+-- Context: Post-Ice Cream Divestment, Focus on Thọ Phát & Spices (Gia vị)
+-- =====================
+DO $$
+DECLARE
+  -- Variables for IDs
+  v_org_id UUID;
+
+  -- Users
+  v_ceo_id UUID; v_cfo_id UUID; v_cmo_id UUID; v_cto_id UUID;
+  v_sales_gt_head UUID; v_sales_mt_head UUID; v_rnd_head UUID; v_scm_head UUID;
+
+  -- Departments
+  v_dept_sales_gt UUID; v_dept_mkt UUID; v_dept_rnd UUID; v_dept_scm UUID; v_dept_it UUID;
+
+  -- Objectives
+  v_obj_growth UUID; v_obj_customer UUID; v_obj_ops UUID; v_obj_people UUID;
+
+  -- Goals
+  v_goal_revenue UUID; v_goal_thophat UUID; v_goal_export UUID; v_goal_digital UUID;
+
+  -- KPIs (for linking)
+  v_kpi_thophat_cov UUID; v_kpi_export_vol UUID; v_kpi_forecast_acc UUID;
+
+  -- OKRs
+  v_okr_sales_1 UUID; v_okr_mkt_1 UUID;
+
+BEGIN
+  -- 1. SETUP CONTEXT
+  SELECT id INTO v_org_id FROM okr_organizations WHERE name = 'KIDO Group' LIMIT 1;
+
+  IF v_org_id IS NULL THEN
+    RAISE NOTICE 'Organization KIDO Group not found. Skipping 2026 seed.';
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM okr_objectives
+    WHERE organization_id = v_org_id
+      AND fiscal_year = '2026'
+      AND name = 'Động cơ tăng trưởng mới (Post-Ice Cream)'
+  ) THEN
+    RAISE NOTICE '2026 seed already applied. Skipping.';
+    RETURN;
+  END IF;
+
+  -- Update Fiscal Year
+  UPDATE okr_organizations SET fiscal_year = '2026', current_quarter = 'Q1 2026' WHERE id = v_org_id;
+
+  -- Get Users (Reuse existing)
+  SELECT id INTO v_ceo_id FROM okr_users WHERE email = 'ceo@kido.vn';
+  SELECT id INTO v_sales_gt_head FROM okr_users WHERE email = 'sales@kido.vn';
+  SELECT id INTO v_cmo_id FROM okr_users WHERE email = 'cmo@kido.vn';
+  SELECT id INTO v_scm_head FROM okr_users WHERE email = 'coo@kido.vn'; -- Reuse COO as SCM Head for demo
+  SELECT id INTO v_cto_id FROM okr_users WHERE email = 'cto@kido.vn';
+  SELECT id INTO v_rnd_head FROM okr_users WHERE role = 'Director' LIMIT 1; -- Placeholder
+
+  -- Get Departments
+  SELECT id INTO v_dept_sales_gt FROM okr_departments WHERE code = 'SALES_GT';
+  SELECT id INTO v_dept_mkt FROM okr_departments WHERE code = 'MARKETING';
+  SELECT id INTO v_dept_rnd FROM okr_departments WHERE code = 'RND';
+  SELECT id INTO v_dept_scm FROM okr_departments WHERE code = 'SCM';
+  SELECT id INTO v_dept_it FROM okr_departments WHERE code = 'TECH';
+
+  -- ====================================================
+  -- 2. CORPORATE OBJECTIVES & GOALS 2026
+  -- ====================================================
+
+  -- Objective 1: Financial - "New Growth Engine"
+  INSERT INTO okr_objectives (organization_id, name, description, perspective, fiscal_year)
+  VALUES (v_org_id, 'Động cơ tăng trưởng mới (Post-Ice Cream)', 'Tối ưu hóa doanh thu từ Thọ Phát và Gia vị', 'financial', '2026')
+  RETURNING id INTO v_obj_growth;
+
+  -- Goal 1.1: Revenue 18k billion
+  INSERT INTO okr_goals (objective_id, name, target_text, owner_id, status)
+  VALUES (v_obj_growth, 'Doanh thu 18,000 Tỷ VND', '18k Bil', v_ceo_id, 'active')
+  RETURNING id INTO v_goal_revenue;
+
+  -- Goal 1.2: Thọ Phát National Expansion
+  INSERT INTO okr_goals (objective_id, name, target_text, owner_id, status)
+  VALUES (v_obj_growth, 'Bánh bao Thọ Phát: Bắc tiến', 'Phủ 100% tỉnh phía Bắc', v_sales_gt_head, 'active')
+  RETURNING id INTO v_goal_thophat;
+
+  -- Goal 1.3: Export Spices
+  INSERT INTO okr_goals (objective_id, name, target_text, owner_id, status)
+  VALUES (v_obj_growth, 'Xuất khẩu Gia vị & Dầu', '+25% Vol', v_sales_gt_head, 'active')
+  RETURNING id INTO v_goal_export;
+
+  -- Objective 2: Internal - "Data Driven Supply Chain"
+  INSERT INTO okr_objectives (organization_id, name, description, perspective, fiscal_year)
+  VALUES (v_org_id, 'Chuỗi cung ứng thông minh', 'Giảm hao hụt hàng tươi sống (Fresh food)', 'internal', '2026')
+  RETURNING id INTO v_obj_ops;
+
+  -- Goal 2.1: Digital Forecast
+  INSERT INTO okr_goals (objective_id, name, target_text, owner_id, status)
+  VALUES (v_obj_ops, 'Dự báo cầu tự động (AI)', 'Accuracy > 90%', v_cto_id, 'active')
+  RETURNING id INTO v_goal_digital;
+
+  -- ====================================================
+  -- 3. DEPARTMENT OKRs & KPIs (Deep Dive)
+  -- ====================================================
+
+  -------------------------------------------------------
+  -- DEPT 1: SALES GT (Tập trung phủ Thọ Phát & Gia vị)
+  -------------------------------------------------------
+
+  -- OKR 1
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id, linked_goal_id)
+  VALUES (v_org_id, v_dept_sales_gt, 'Phủ kín thị trường miền Bắc với sản phẩm Thọ Phát', 'financial', 'Q1 2026', v_sales_gt_head, v_goal_thophat)
+  RETURNING id INTO v_okr_sales_1;
+
+  INSERT INTO okr_key_results (okr_id, title, target_value, current_value, unit, weight) VALUES
+  (v_okr_sales_1, 'Mở mới 50 NPP chuyên doanh thực phẩm mát tại miền Bắc', 50, 12, 'NPP', 0.4),
+  (v_okr_sales_1, 'Lắp đặt 2,000 tủ hấp bánh bao tại điểm bán', 2000, 450, 'tủ', 0.3),
+  (v_okr_sales_1, 'Doanh số Thọ Phát miền Bắc đạt 200 tỷ/quý', 200, 45, 'tỷ', 0.3);
+
+  -- OKR 2
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id)
+  VALUES (v_org_id, v_dept_sales_gt, 'Tăng hiện diện ngành hàng Gia vị (Nước mắm, Hạt nêm)', 'financial', 'Q1 2026', v_sales_gt_head);
+  INSERT INTO okr_key_results (okr_id, title, target_value, current_value, unit, weight) VALUES
+  (v_okr_sales_1, 'Đạt 80% điểm bán có trưng bày combo Dầu + Nước mắm', 80, 60, '%', 0.5),
+  (v_okr_sales_1, 'Doanh số ngành gia vị tăng trưởng 30% vs Q1 2025', 30, 10, '%', 0.5);
+
+  -- OKR 3, 4, 5 for Sales GT...
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id) VALUES
+  (v_org_id, v_dept_sales_gt, 'Tối ưu hóa đội ngũ bán hàng (Sales Force Effectiveness)', 'internal', 'Q1 2026', v_sales_gt_head),
+  (v_org_id, v_dept_sales_gt, 'Triển khai DMS App cho 100% nhân viên bán hàng mới', 'internal', 'Q1 2026', v_sales_gt_head),
+  (v_org_id, v_dept_sales_gt, 'Giảm tỷ lệ hàng trả về (Return rate) ngành bánh tươi', 'financial', 'Q1 2026', v_sales_gt_head);
+
+  -- KPIs for Sales GT
+  INSERT INTO okr_kpis (organization_id, department_id, name, perspective, target_value, current_value, unit, status, linked_goal_id)
+  VALUES
+  (v_org_id, v_dept_sales_gt, 'Độ phủ Thọ Phát (Numeric Distribution)', 'external', 60000, 42000, 'điểm', 'at_risk', v_goal_thophat) RETURNING id INTO v_kpi_thophat_cov;
+
+  -------------------------------------------------------
+  -- DEPT 2: MARKETING (Rebranding & New Launch)
+  -------------------------------------------------------
+
+  -- OKR 1
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id, linked_goal_id)
+  VALUES (v_org_id, v_dept_mkt, 'Tái định vị thương hiệu: KIDO - Bếp ăn quốc dân', 'external', 'Q1 2026', v_cmo_id, v_goal_revenue)
+  RETURNING id INTO v_okr_mkt_1;
+
+  INSERT INTO okr_key_results (okr_id, title, target_value, current_value, unit, weight) VALUES
+  (v_okr_mkt_1, 'Đạt 10 triệu view cho chiến dịch "Vị ngon gian bếp Việt"', 10, 8.5, 'triệu', 0.5),
+  (v_okr_mkt_1, 'Tăng chỉ số Brand Love ngành Gia vị lên Top 3', 3, 5, 'rank', 0.5);
+
+  -- 4 More OKRs for Marketing
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id) VALUES
+  (v_org_id, v_dept_mkt, 'Ra mắt thành công dòng Bánh bao nhân sầu riêng', 'external', 'Q1 2026', v_cmo_id),
+  (v_org_id, v_dept_mkt, 'Tối ưu chi phí Trade Marketing/Revenue', 'financial', 'Q1 2026', v_cmo_id),
+  (v_org_id, v_dept_mkt, 'Xây dựng cộng đồng KIDO Kitchen trên TikTok', 'learning', 'Q1 2026', v_cmo_id),
+  (v_org_id, v_dept_mkt, 'Hỗ trợ Sales GT mở điểm bán mới qua Activation', 'internal', 'Q1 2026', v_cmo_id);
+
+  -------------------------------------------------------
+  -- DEPT 3: SUPPLY CHAIN (Cold Chain & Logistics)
+  -------------------------------------------------------
+
+  -- OKR 1
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id)
+  VALUES (v_org_id, v_dept_scm, 'Thiết lập Cold Chain vận chuyển Bánh bao ra Bắc', 'internal', 'Q1 2026', v_scm_head);
+
+  -- OKR 2
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id)
+  VALUES (v_org_id, v_dept_scm, 'Giảm chi phí Logistics trên mỗi đơn vị sản phẩm', 'financial', 'Q1 2026', v_scm_head);
+
+  -- 3 More OKRs
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id) VALUES
+  (v_org_id, v_dept_scm, 'Tối ưu tồn kho nguyên liệu Dầu (Inventory Days)', 'internal', 'Q1 2026', v_scm_head),
+  (v_org_id, v_dept_scm, 'Đạt chứng nhận Green Logistics cho đội xe', 'learning', 'Q1 2026', v_scm_head),
+  (v_org_id, v_dept_scm, 'Đảm bảo tỷ lệ Fill Rate cho kênh MT đạt 98%', 'external', 'Q1 2026', v_scm_head);
+
+  -- KPIs for SCM
+  INSERT INTO okr_kpis (organization_id, department_id, name, perspective, target_value, current_value, unit, status)
+  VALUES
+  (v_org_id, v_dept_scm, 'Tỷ lệ hư hỏng hàng mát (Bánh bao)', 'internal', 2, 4.5, '%', 'off_track'); -- Fishbone candidate
+
+  -------------------------------------------------------
+  -- DEPT 4: R&D (Product Localization)
+  -------------------------------------------------------
+  -- 5 OKRs
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id) VALUES
+  (v_org_id, v_dept_rnd, 'Phát triển công thức Bánh bao vị Bắc (ít ngọt)', 'internal', 'Q1 2026', v_rnd_head),
+  (v_org_id, v_dept_rnd, 'Cải tiến bao bì Dầu ăn giảm nhựa 15%', 'internal', 'Q1 2026', v_rnd_head),
+  (v_org_id, v_dept_rnd, 'Nghiên cứu dòng nước mắm cao đạm xuất khẩu', 'financial', 'Q1 2026', v_rnd_head),
+  (v_org_id, v_dept_rnd, 'Đạt chuẩn FDA cho dòng bánh tươi', 'learning', 'Q1 2026', v_rnd_head),
+  (v_org_id, v_dept_rnd, 'Tối ưu cost nguyên liệu thay thế cho Bơ thực vật', 'financial', 'Q1 2026', v_rnd_head);
+
+  -------------------------------------------------------
+  -- DEPT 5: IT / TECHNOLOGY (AI & Digital)
+  -------------------------------------------------------
+  -- 5 OKRs
+  INSERT INTO okr_okrs (organization_id, department_id, objective, perspective, quarter, owner_id, linked_goal_id) VALUES
+  (v_org_id, v_dept_it, 'Triển khai module AI Forecast cho ngành hàng Dầu', 'internal', 'Q1 2026', v_cto_id, v_goal_digital),
+  (v_org_id, v_dept_it, 'Nâng cấp hạ tầng Cloud phục vụ D-Office', 'internal', 'Q1 2026', v_cto_id, NULL),
+  (v_org_id, v_dept_it, 'Bảo mật dữ liệu: Zero Trust Architecture', 'learning', 'Q1 2026', v_cto_id, NULL),
+  (v_org_id, v_dept_it, 'Số hóa quy trình duyệt giá (Pricing Approval)', 'internal', 'Q1 2026', v_cto_id, NULL),
+  (v_org_id, v_dept_it, 'Tích hợp hệ thống DMS với đối tác Logistic 3PL', 'internal', 'Q1 2026', v_cto_id, NULL);
+
+  -- KPIs for IT
+  INSERT INTO okr_kpis (organization_id, department_id, name, perspective, target_value, current_value, unit, status)
+  VALUES
+  (v_org_id, v_dept_it, 'Độ chính xác dự báo (Forecast Accuracy)', 'internal', 90, 75, '%', 'at_risk') RETURNING id INTO v_kpi_forecast_acc;
+
+  -- ====================================================
+  -- 4. CRITICAL SUCCESS FACTORS (CSFs)
+  -- ====================================================
+
+  INSERT INTO okr_csfs (organization_id, title, status, priority, department_id, progress) VALUES
+  (v_org_id, 'Tìm kiếm đối tác kho lạnh tại Hà Nội', 'in_progress', 'critical', v_dept_scm, 60),
+  (v_org_id, 'Giấy phép FDA cho lô hàng xuất khẩu Mỹ đầu tiên', 'completed', 'high', v_dept_rnd, 100),
+  (v_org_id, 'Tuyển dụng GĐ Kinh doanh miền Bắc (ngành hàng mát)', 'blocked', 'critical', v_dept_sales_gt, 20),
+  (v_org_id, 'Golive hệ thống AI Demand Planning phase 1', 'in_progress', 'high', v_dept_it, 85);
+
+  -- ====================================================
+  -- 5. REVIEWS & MEETINGS (Weekly/Monthly)
+  -- ====================================================
+
+  -- Monthly Review: Strategy Check
+  INSERT INTO okr_reviews (organization_id, type, title, scheduled_date, department_id, notes)
+  VALUES (v_org_id, 'monthly', 'Review Chiến lược Bắc tiến T1/2026', '2026-02-05', NULL, 'Tiến độ mở NPP chậm do thiếu nhân sự key');
+
+  -- Weekly Review: SCM & Sales
+  INSERT INTO okr_reviews (organization_id, type, title, scheduled_date, department_id, notes)
+  VALUES (v_org_id, 'weekly', 'Giao ban SCM - Sales Tuần 3', '2026-01-20', v_dept_scm, 'Vấn đề xe lạnh không đủ tải trọng cho đơn hàng Tết');
+
+  -- Weekly Review: Marketing
+  INSERT INTO okr_reviews (organization_id, type, title, scheduled_date, department_id, notes)
+  VALUES (v_org_id, 'weekly', 'Duyệt campaign Tết 2026', '2026-01-15', v_dept_mkt, 'Đã chốt TVC, chờ duyệt ngân sách digital');
+
+  -- ====================================================
+  -- 6. FISHBONE (Vấn đề thực tế)
+  -- ====================================================
+
+  -- Issue 1: Hư hỏng bánh bao khi vận chuyển ra Bắc (KPI off-track)
+  DECLARE
+    v_kpi_waste UUID;
+  BEGIN
+    SELECT id INTO v_kpi_waste FROM okr_kpis WHERE name = 'Tỷ lệ hư hỏng hàng mát (Bánh bao)' LIMIT 1;
+
+    INSERT INTO okr_fishbone_items (organization_id, kpi_id, factor, problem, action, owner_id, status) VALUES
+    (v_org_id, v_kpi_waste, 'Logistics', 'Xe lạnh không ổn định nhiệt', 'Lắp cảm biến nhiệt IoT real-time', v_scm_head, 'pending'),
+    (v_org_id, v_kpi_waste, 'Kho', 'Xếp dỡ không đúng quy cách', 'Training quy trình xếp hàng mát', v_scm_head, 'done'),
+    (v_org_id, v_kpi_waste, 'Sản xuất', 'Bao bì dễ rách', 'Test loại bao bì 3 lớp mới', v_rnd_head, 'pending'); -- FIXED HERE
+  END;
+
+  -- Issue 2: Dự báo sai lệch (KPI at-risk)
+  INSERT INTO okr_fishbone_items (organization_id, kpi_id, factor, problem, action, owner_id, status) VALUES
+  (v_org_id, v_kpi_forecast_acc, 'Sales', 'Nhập liệu đơn hàng ảo', 'Khóa đơn hàng ảo trên DMS', v_sales_gt_head, 'done'),
+  (v_org_id, v_kpi_forecast_acc, 'Marketing', 'Không báo trước promo', 'Quy trình S&OP tích hợp lịch promo', v_cmo_id, 'pending'); -- FIXED HERE
+
+END $$;
+
+-- =====================
 -- Backfill Fiscal Year
 -- =====================
 UPDATE okr_organizations
@@ -1296,19 +1561,295 @@ CREATE INDEX IF NOT EXISTS idx_okr_fishbone_kpi ON okr_fishbone_items(kpi_id);
 -- =====================
 -- RLS (optional)
 -- =====================
+CREATE OR REPLACE FUNCTION public.current_user_email()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT (auth.jwt() ->> 'email')::text;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_org_member(org_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM okr_users u
+    WHERE u.organization_id = org_id
+      AND (
+        u.auth_user_id = auth.uid()
+        OR u.email = public.current_user_email()
+      )
+  );
+$$;
+
 ALTER TABLE okr_organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE okr_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE okr_departments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE okr_objectives ENABLE ROW LEVEL SECURITY;
 ALTER TABLE okr_goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_strategies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_strategy_measures ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_department_ogsm ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_department_measures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE okr_okrs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE okr_kpis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_kpi_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_csfs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_fishbone_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_weekly_actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_strategy_nodes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE okr_strategy_edges ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
-  CREATE POLICY "org_isolation" ON okr_objectives
+  CREATE POLICY "organizations_member_access" ON okr_organizations
+    FOR ALL USING (public.is_org_member(id))
+    WITH CHECK (public.is_org_member(id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_users_org_read" ON okr_users
+    FOR SELECT USING (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_users_self_write" ON okr_users
+    FOR INSERT WITH CHECK (email = public.current_user_email())
+    ;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_users_self_update" ON okr_users
+    FOR UPDATE USING (email = public.current_user_email())
+    WITH CHECK (email = public.current_user_email());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_departments_org_access" ON okr_departments
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_objectives_org_access" ON okr_objectives
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_goals_org_access" ON okr_goals
     FOR ALL USING (
-      organization_id IN (
-        SELECT organization_id FROM okr_users WHERE id = auth.uid()
+      EXISTS (
+        SELECT 1
+        FROM okr_objectives o
+        WHERE o.id = objective_id
+          AND public.is_org_member(o.organization_id)
+      )
+    )
+    WITH CHECK (
+      EXISTS (
+        SELECT 1
+        FROM okr_objectives o
+        WHERE o.id = objective_id
+          AND public.is_org_member(o.organization_id)
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_strategies_org_access" ON okr_strategies
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1
+        FROM okr_goals g
+        JOIN okr_objectives o ON o.id = g.objective_id
+        WHERE g.id = goal_id
+          AND public.is_org_member(o.organization_id)
+      )
+    )
+    WITH CHECK (
+      EXISTS (
+        SELECT 1
+        FROM okr_goals g
+        JOIN okr_objectives o ON o.id = g.objective_id
+        WHERE g.id = goal_id
+          AND public.is_org_member(o.organization_id)
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_strategy_measures_org_access" ON okr_strategy_measures
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1
+        FROM okr_strategies s
+        JOIN okr_goals g ON g.id = s.goal_id
+        JOIN okr_objectives o ON o.id = g.objective_id
+        WHERE s.id = strategy_id
+          AND public.is_org_member(o.organization_id)
+      )
+    )
+    WITH CHECK (
+      EXISTS (
+        SELECT 1
+        FROM okr_strategies s
+        JOIN okr_goals g ON g.id = s.goal_id
+        JOIN okr_objectives o ON o.id = g.objective_id
+        WHERE s.id = strategy_id
+          AND public.is_org_member(o.organization_id)
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_department_ogsm_org_access" ON okr_department_ogsm
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1
+        FROM okr_departments d
+        WHERE d.id = department_id
+          AND public.is_org_member(d.organization_id)
+      )
+    )
+    WITH CHECK (
+      EXISTS (
+        SELECT 1
+        FROM okr_departments d
+        WHERE d.id = department_id
+          AND public.is_org_member(d.organization_id)
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_department_measures_org_access" ON okr_department_measures
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1
+        FROM okr_department_ogsm og
+        JOIN okr_departments d ON d.id = og.department_id
+        WHERE og.id = dept_ogsm_id
+          AND public.is_org_member(d.organization_id)
+      )
+    )
+    WITH CHECK (
+      EXISTS (
+        SELECT 1
+        FROM okr_department_ogsm og
+        JOIN okr_departments d ON d.id = og.department_id
+        WHERE og.id = dept_ogsm_id
+          AND public.is_org_member(d.organization_id)
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_kpis_org_access" ON okr_kpis
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_kpi_history_org_access" ON okr_kpi_history
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1
+        FROM okr_kpis k
+        WHERE k.id = kpi_id
+          AND public.is_org_member(k.organization_id)
+      )
+    )
+    WITH CHECK (
+      EXISTS (
+        SELECT 1
+        FROM okr_kpis k
+        WHERE k.id = kpi_id
+          AND public.is_org_member(k.organization_id)
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_okrs_org_access" ON okr_okrs
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_csfs_org_access" ON okr_csfs
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_fishbone_org_access" ON okr_fishbone_items
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_weekly_actions_org_access" ON okr_weekly_actions
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_reviews_org_access" ON okr_reviews
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_strategy_nodes_org_access" ON okr_strategy_nodes
+    FOR ALL USING (public.is_org_member(organization_id))
+    WITH CHECK (public.is_org_member(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "okr_strategy_edges_org_access" ON okr_strategy_edges
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1
+        FROM okr_strategy_nodes s
+        JOIN okr_strategy_nodes t ON t.id = target_node_id
+        WHERE s.id = source_node_id
+          AND s.organization_id = t.organization_id
+          AND public.is_org_member(s.organization_id)
+      )
+    )
+    WITH CHECK (
+      EXISTS (
+        SELECT 1
+        FROM okr_strategy_nodes s
+        JOIN okr_strategy_nodes t ON t.id = target_node_id
+        WHERE s.id = source_node_id
+          AND s.organization_id = t.organization_id
+          AND public.is_org_member(s.organization_id)
       )
     );
 EXCEPTION WHEN duplicate_object THEN NULL;

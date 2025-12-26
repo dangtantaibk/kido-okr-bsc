@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Calendar, ChevronDown, Search } from 'lucide-react';
+import { Bell, Calendar, ChevronDown, LogOut, Search, User2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@/contexts/organization-context';
 import { formatQuarterLabel, quarterOptions } from '@/lib/period';
+import { useAuth } from '@/contexts/auth-context';
 
 interface HeaderProps {
   title: string;
@@ -21,6 +22,7 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const { user, signOut } = useAuth();
   const {
     activeFiscalYear,
     activeQuarter,
@@ -111,6 +113,28 @@ export function Header({ title, subtitle }: HeaderProps) {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {user && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="hidden gap-2 sm:flex">
+                <User2 className="h-4 w-4 text-slate-500" />
+                <span className="max-w-[140px] truncate text-sm text-slate-700">
+                  {user.email}
+                </span>
+                <ChevronDown className="h-3 w-3 text-slate-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => signOut()}>
+                <LogOut className="h-4 w-4 text-slate-500" />
+                Đăng xuất
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </header>
   );

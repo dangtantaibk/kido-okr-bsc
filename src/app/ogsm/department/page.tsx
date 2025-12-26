@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -15,6 +15,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
   ArrowLeft,
   Building2,
   Target,
@@ -27,6 +37,10 @@ import {
   Wallet,
   ArrowRight,
   Filter,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import {
   perspectiveColors,
@@ -75,108 +89,427 @@ const getThemeColors = (p: Perspective) => {
   };
 };
 
+const formatOwnerLabel = (owner?: { full_name?: string | null; email?: string | null; role?: string | null } | null) => {
+  const name = owner?.full_name || owner?.email || '';
+  const role = owner?.role || '';
+
+  if (!name) {
+    return role;
+  }
+
+  return role ? `${name} (${role})` : name;
+};
+
+type MeasureForm = {
+  id?: string;
+  name: string;
+  kpiId?: string | null;
+};
+
+type DepartmentOGSMRecord = DepartmentOGSM & {
+  departmentId?: string | null;
+  ownerId?: string | null;
+  linkedGoalId?: string | null;
+  measureItems: MeasureForm[];
+};
+
+type DepartmentFormState = {
+  departmentId: string;
+  linkedGoalId: string;
+  objective: string;
+  purpose: string;
+  strategy: string;
+  ownerId: string;
+  progress: string;
+  measures: MeasureForm[];
+};
+
+const defaultFormState: DepartmentFormState = {
+  departmentId: '',
+  linkedGoalId: '',
+  objective: '',
+  purpose: '',
+  strategy: '',
+  ownerId: '',
+  progress: '0',
+  measures: [],
+};
+
+type DialogState = {
+  mode: 'create' | 'edit';
+  targetId?: string;
+};
+
 export default function OGSMDepartmentPage() {
+  const [activeTab, setActiveTab] = useState<'list' | 'graph'>('list');
   const [selectedDept, setSelectedDept] = useState<string>('all');
-  const [departmentOGSMs, setDepartmentOGSMs] = useState<DepartmentOGSM[]>([]);
+  const [departmentOGSMs, setDepartmentOGSMs] = useState<DepartmentOGSMRecord[]>([]);
   const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
   const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; full_name: string; email?: string | null; role?: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dialogState, setDialogState] = useState<DialogState | null>(null);
+  const [formState, setFormState] = useState<DepartmentFormState>(defaultFormState);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [initialMeasureIds, setInitialMeasureIds] = useState<string[]>([]);
+  const [graphRefreshKey, setGraphRefreshKey] = useState(0);
   const { organization, activeFiscalYear, isLoading: isOrgLoading } = useOrganization();
 
-  useEffect(() => {
-    let isActive = true;
+  const loadData = useCallback(async (isActiveRef?: { current: boolean }) => {
+    try {
+      setIsLoading(true);
+      const supabase = getSupabaseBrowserClient();
+      const orgId = organization?.id;
 
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const supabase = getSupabaseBrowserClient();
-        const orgId = organization?.id;
-
-        if (!orgId) {
-          return;
-        }
-
-        const objectiveRows = await getObjectivesWithCascade(
-          supabase,
-          orgId,
-          activeFiscalYear
-        );
-        if (!isActive) {
-          return;
-        }
-
-        const objectives = (objectiveRows || []).map((obj: any) => ({
-          id: obj.id,
-          name: obj.name || '',
-          description: obj.description || '',
-          perspective: obj.perspective || 'financial',
-        }));
-
-        const goals = (objectiveRows || []).flatMap((obj: any) =>
-          (obj.goals || []).map((goal: any) => ({
-            id: goal.id,
-            objectiveId: obj.id,
-            name: goal.name || '',
-            target:
-              goal.target_text ||
-              (goal.target_value
-                ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
-                : ''),
-            owner: goal.owner?.full_name || goal.owner?.email || '',
-            progress: Number(goal.progress || 0),
-          }))
-        );
-
-        const departmentRows = (objectiveRows || []).flatMap((obj: any) =>
-          (obj.goals || []).flatMap((goal: any) =>
-            (goal.department_ogsms || []).map((dept: any) => ({
-              id: dept.id,
-              department: dept.department?.name || '',
-              purpose: dept.purpose || '',
-              objective: dept.objective || '',
-              strategy: dept.strategy || '',
-              measures: (dept.measures || []).map((measure: any) => measure?.name || ''),
-              owner: dept.owner?.full_name || dept.owner?.email || '',
-              progress: Number(dept.progress || 0),
-              linkedGoalId: dept.linked_goal_id || goal.id,
-              kpiIds: (dept.measures || [])
-                .map((measure: any) => measure?.kpi_id)
-                .filter(Boolean),
-            }))
-          )
-        );
-
-        setOgsmObjectives(objectives);
-        setOgsmGoals(goals);
-        setDepartmentOGSMs(departmentRows);
-      } catch (error) {
-        console.error('Failed to load department OGSM data', error);
-      } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
+      if (!orgId) {
+        return;
       }
-    };
+
+      const [objectiveRows, departmentRows, userRows] = await Promise.all([
+        getObjectivesWithCascade(supabase, orgId, activeFiscalYear),
+        supabase
+          .from('okr_departments')
+          .select('id, name')
+          .eq('organization_id', orgId)
+          .order('name', { ascending: true }),
+        supabase
+          .from('okr_users')
+          .select('id, full_name, email, role')
+          .eq('organization_id', orgId)
+          .order('full_name', { ascending: true }),
+      ]);
+
+      if (departmentRows.error) {
+        throw departmentRows.error;
+      }
+
+      if (userRows.error) {
+        throw userRows.error;
+      }
+
+      if (isActiveRef && !isActiveRef.current) {
+        return;
+      }
+
+      const objectives = (objectiveRows || []).map((obj: any) => ({
+        id: obj.id,
+        name: obj.name || '',
+        description: obj.description || '',
+        perspective: obj.perspective || 'financial',
+      }));
+
+      const goals = (objectiveRows || []).flatMap((obj: any) =>
+        (obj.goals || []).map((goal: any) => ({
+          id: goal.id,
+          objectiveId: obj.id,
+          name: goal.name || '',
+          target:
+            goal.target_text ||
+            (goal.target_value
+              ? `${goal.target_value}${goal.target_unit ? ` ${goal.target_unit}` : ''}`
+              : ''),
+          owner: formatOwnerLabel(goal.owner),
+          progress: Number(goal.progress || 0),
+        }))
+      );
+
+      const departmentRowsMapped = (objectiveRows || []).flatMap((obj: any) =>
+        (obj.goals || []).flatMap((goal: any) =>
+          (goal.department_ogsms || []).map((dept: any) => ({
+            id: dept.id,
+            department: dept.department?.name || '',
+            departmentId: dept.department_id || dept.department?.id || null,
+            purpose: dept.purpose || '',
+            objective: dept.objective || '',
+            strategy: dept.strategy || '',
+            measures: (dept.measures || []).map((measure: any) => measure?.name || ''),
+            measureItems: (dept.measures || [])
+              .map((measure: any) => ({
+                id: measure?.id,
+                name: measure?.name || '',
+                kpiId: measure?.kpi_id || null,
+              }))
+              .filter((measure: { id?: string }) => Boolean(measure.id)),
+            owner: formatOwnerLabel(dept.owner),
+            ownerId: dept.owner_id || dept.owner?.id || null,
+            progress: Number(dept.progress || 0),
+            linkedGoalId: dept.linked_goal_id ?? goal.id,
+            kpiIds: (dept.measures || [])
+              .map((measure: any) => measure?.kpi_id)
+              .filter(Boolean),
+          }))
+        )
+      );
+
+      setOgsmObjectives(objectives);
+      setOgsmGoals(goals);
+      setDepartmentOGSMs(departmentRowsMapped);
+      setDepartments(departmentRows.data || []);
+      setUsers(userRows.data || []);
+    } catch (error) {
+      console.error('Failed to load department OGSM data', error);
+    } finally {
+      if (!isActiveRef || isActiveRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [organization?.id, activeFiscalYear]);
+
+  useEffect(() => {
+    const isActiveRef = { current: true };
 
     if (!isOrgLoading) {
-      loadData();
+      loadData(isActiveRef);
     }
 
     return () => {
-      isActive = false;
+      isActiveRef.current = false;
     };
-  }, [organization?.id, activeFiscalYear, isOrgLoading]);
+  }, [loadData, isOrgLoading]);
 
   // Extract unique departments
   const uniqueDepartments = useMemo(() => {
-    return Array.from(new Set(departmentOGSMs.map(d => d.department))).sort();
-  }, [departmentOGSMs]);
+    const names = departments.length > 0
+      ? departments.map(d => d.name)
+      : departmentOGSMs.map(d => d.department);
+    return Array.from(new Set(names)).sort();
+  }, [departments, departmentOGSMs]);
 
   // Filter data
   const filteredData = useMemo(() => {
     if (selectedDept === 'all') return departmentOGSMs;
     return departmentOGSMs.filter(d => d.department === selectedDept);
   }, [selectedDept, departmentOGSMs]);
+
+  const openDialog = (state: DialogState, overrides: Partial<DepartmentFormState> = {}) => {
+    setFormError(null);
+    setFormState({ ...defaultFormState, ...overrides });
+    setDialogState(state);
+  };
+
+  const closeDialog = () => {
+    setDialogState(null);
+    setFormError(null);
+    setInitialMeasureIds([]);
+  };
+
+  const openCreateDialog = () => {
+    const selectedDepartment = selectedDept !== 'all'
+      ? departments.find((dept) => dept.name === selectedDept)
+      : null;
+    setInitialMeasureIds([]);
+    openDialog(
+      { mode: 'create' },
+      {
+        departmentId: selectedDepartment?.id || '',
+        progress: '0',
+      }
+    );
+  };
+
+  const openEditDialog = (dept: DepartmentOGSMRecord) => {
+    const measureItems = dept.measureItems?.length
+      ? dept.measureItems
+      : (dept.measures || []).map((name) => ({ name }));
+
+    setInitialMeasureIds(
+      (dept.measureItems || [])
+        .map((measure) => measure.id)
+        .filter((id): id is string => Boolean(id))
+    );
+
+    openDialog(
+      { mode: 'edit', targetId: dept.id },
+      {
+        departmentId: dept.departmentId || '',
+        linkedGoalId: dept.linkedGoalId || '',
+        objective: dept.objective || '',
+        purpose: dept.purpose || '',
+        strategy: dept.strategy || '',
+        ownerId: dept.ownerId || '',
+        progress: String(dept.progress ?? 0),
+        measures: measureItems,
+      }
+    );
+  };
+
+  const handleAddMeasure = () => {
+    setFormState((prev) => ({
+      ...prev,
+      measures: [...prev.measures, { name: '' }],
+    }));
+  };
+
+  const handleMeasureChange = (index: number, value: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      measures: prev.measures.map((measure, idx) =>
+        idx === index ? { ...measure, name: value } : measure
+      ),
+    }));
+  };
+
+  const handleRemoveMeasure = (index: number) => {
+    setFormState((prev) => ({
+      ...prev,
+      measures: prev.measures.filter((_, idx) => idx !== index),
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!dialogState) {
+      return;
+    }
+
+    const objectiveValue = formState.objective.trim();
+    if (!formState.departmentId || !formState.linkedGoalId || !objectiveValue) {
+      setFormError('Vui lòng nhập đầy đủ Department, Linked Goal và Objective.');
+      return;
+    }
+
+    setIsSaving(true);
+    setFormError(null);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const progressValue = Number(formState.progress);
+      const progress = Number.isFinite(progressValue)
+        ? Math.min(100, Math.max(0, progressValue))
+        : 0;
+
+      const payload = {
+        department_id: formState.departmentId,
+        linked_goal_id: formState.linkedGoalId,
+        objective: objectiveValue,
+        purpose: formState.purpose.trim() || null,
+        strategy: formState.strategy.trim() || null,
+        owner_id: formState.ownerId || null,
+        progress,
+        fiscal_year: activeFiscalYear || null,
+      };
+
+      let deptOgsmId = dialogState.targetId;
+
+      if (dialogState.mode === 'create') {
+        const { data, error } = await supabase
+          .from('okr_department_ogsm')
+          .insert(payload)
+          .select('id')
+          .single();
+        if (error) {
+          throw error;
+        }
+        deptOgsmId = data?.id;
+      } else if (dialogState.targetId) {
+        const { error } = await supabase
+          .from('okr_department_ogsm')
+          .update(payload)
+          .eq('id', dialogState.targetId);
+        if (error) {
+          throw error;
+        }
+      }
+
+      if (!deptOgsmId) {
+        throw new Error('Missing department OGSM id');
+      }
+
+      const trimmedMeasures = formState.measures
+        .map((measure) => ({
+          ...measure,
+          name: measure.name.trim(),
+        }))
+        .filter((measure) => measure.name);
+
+      const existingMeasures = trimmedMeasures.filter((measure) => measure.id);
+      const newMeasures = trimmedMeasures.filter((measure) => !measure.id);
+      const currentMeasureIds = existingMeasures
+        .map((measure) => measure.id)
+        .filter((id): id is string => Boolean(id));
+      const removedMeasureIds = initialMeasureIds.filter(
+        (id) => !currentMeasureIds.includes(id)
+      );
+
+      if (dialogState.mode === 'edit') {
+        if (existingMeasures.length > 0) {
+          const updates = await Promise.all(
+            existingMeasures.map((measure) =>
+              supabase
+                .from('okr_department_measures')
+                .update({ name: measure.name })
+                .eq('id', measure.id as string)
+            )
+          );
+          const updateError = updates.find((res) => res.error)?.error;
+          if (updateError) {
+            throw updateError;
+          }
+        }
+
+        if (removedMeasureIds.length > 0) {
+          const { error } = await supabase
+            .from('okr_department_measures')
+            .delete()
+            .eq('dept_ogsm_id', deptOgsmId)
+            .in('id', removedMeasureIds);
+          if (error) {
+            throw error;
+          }
+        }
+      }
+
+      if (newMeasures.length > 0) {
+        const { error } = await supabase.from('okr_department_measures').insert(
+          newMeasures.map((measure) => ({
+            dept_ogsm_id: deptOgsmId,
+            name: measure.name,
+            kpi_id: measure.kpiId || null,
+          }))
+        );
+        if (error) {
+          throw error;
+        }
+      }
+
+      await loadData();
+      setGraphRefreshKey((prev) => prev + 1);
+      closeDialog();
+    } catch (error) {
+      console.error('Failed to save department OGSM', error);
+      setFormError('Không thể lưu. Vui lòng thử lại.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const confirmDelete = (message: string) => {
+    return window.confirm(message);
+  };
+
+  const handleDeleteDepartment = async (deptId: string) => {
+    if (!confirmDelete('Xóa mục tiêu phòng ban này? Metrics liên quan sẽ bị xóa.')) {
+      return;
+    }
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.from('okr_department_ogsm').delete().eq('id', deptId);
+      if (error) {
+        throw error;
+      }
+      await loadData();
+      setGraphRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      console.error('Failed to delete department OGSM', error);
+    }
+  };
+
+  const dialogTitle = dialogState
+    ? dialogState.mode === 'create'
+      ? 'Tạo mục tiêu phòng ban'
+      : 'Chỉnh sửa mục tiêu phòng ban'
+    : '';
 
   if (isLoading) {
     return <div className="p-10 flex justify-center text-slate-400">Loading...</div>;
@@ -197,7 +530,7 @@ export default function OGSMDepartmentPage() {
           </Link>
         </div>
 
-        <Tabs defaultValue="list" className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'list' | 'graph')} className="w-full">
           {/* Sticky Header Bar */}
           <div className="sticky top-16 z-20 bg-slate-50/95 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 -mx-6 px-6 py-3 border-b border-slate-200 mb-6 shadow-sm transition-all">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -212,8 +545,17 @@ export default function OGSMDepartmentPage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Right: Department Filter */}
+              {/* Right: Department Filter + Actions */}
               <div className="flex items-center gap-3 self-start md:self-auto w-full md:w-auto">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3"
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tạo mục tiêu phòng ban
+                </Button>
                 <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm h-9 w-full md:w-auto">
                   <Filter className="w-4 h-4 text-slate-400 ml-1" />
                   <span className="text-xs font-medium text-slate-500 whitespace-nowrap hidden sm:block">Phòng ban:</span>
@@ -274,9 +616,29 @@ export default function OGSMDepartmentPage() {
                             <h3 className="text-lg font-bold leading-tight">{dept.department}</h3>
                           </div>
                         </div>
-                        <Badge className="bg-white/20 hover:bg-white/30 text-white border-0">
-                          {perspectiveLabels[perspective]}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-white/20 hover:bg-white/30 text-white border-0">
+                            {perspectiveLabels[perspective]}
+                          </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-white/80 hover:text-white hover:bg-white/20"
+                            onClick={() => openEditDialog(dept)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-white/80 hover:text-red-200 hover:bg-white/20"
+                            onClick={() => handleDeleteDepartment(dept.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
 
@@ -374,9 +736,188 @@ export default function OGSMDepartmentPage() {
                   : 'Visualizing department contributions to company goals'}
               </p>
             </div>
-            <InteractiveGraph filterDepartment={selectedDept !== 'all' ? selectedDept : undefined} />
+            <InteractiveGraph
+              key={graphRefreshKey}
+              filterDepartment={selectedDept !== 'all' ? selectedDept : undefined}
+              onDepartmentSelect={openEditDialog}
+            />
           </TabsContent>
         </Tabs>
+
+        <Dialog
+          open={!!dialogState}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeDialog();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[640px]">
+            <DialogHeader>
+              <DialogTitle>{dialogTitle}</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {formError ? (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                  {formError}
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="dept-select">
+                    Department <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formState.departmentId}
+                    onValueChange={(value) => setFormState((prev) => ({ ...prev, departmentId: value }))}
+                  >
+                    <SelectTrigger id="dept-select">
+                      <SelectValue placeholder="Chọn phòng ban" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="goal-select">
+                    Linked Goal <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formState.linkedGoalId}
+                    onValueChange={(value) => setFormState((prev) => ({ ...prev, linkedGoalId: value }))}
+                  >
+                    <SelectTrigger id="goal-select">
+                      <SelectValue placeholder="Chọn goal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ogsmGoals.map((goal) => (
+                        <SelectItem key={goal.id} value={goal.id}>
+                          {goal.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dept-objective">
+                  Objective <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="dept-objective"
+                  value={formState.objective}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, objective: event.target.value }))}
+                  placeholder="Nhập mục tiêu phòng ban..."
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="dept-purpose">Purpose</Label>
+                  <Input
+                    id="dept-purpose"
+                    value={formState.purpose}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, purpose: event.target.value }))}
+                    placeholder="Tăng trưởng, NPD..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dept-owner">Owner</Label>
+                  <Select
+                    value={formState.ownerId}
+                    onValueChange={(value) => setFormState((prev) => ({ ...prev, ownerId: value }))}
+                  >
+                    <SelectTrigger id="dept-owner">
+                      <SelectValue placeholder="Chọn người phụ trách" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.full_name || user.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dept-strategy">Strategy</Label>
+                <Textarea
+                  id="dept-strategy"
+                  value={formState.strategy}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, strategy: event.target.value }))}
+                  placeholder="Mô tả chiến lược (optional)"
+                  className="min-h-[90px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Measures</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddMeasure}>
+                    <Plus className="mr-1 h-3 w-3" />
+                    Thêm measure
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {formState.measures.length === 0 ? (
+                    <div className="text-xs text-slate-500">Chưa có measure.</div>
+                  ) : (
+                    formState.measures.map((measure, index) => (
+                      <div key={`${measure.id || 'new'}-${index}`} className="flex items-center gap-2">
+                        <Input
+                          value={measure.name}
+                          onChange={(event) => handleMeasureChange(index, event.target.value)}
+                          placeholder="Tên measure..."
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-slate-500 hover:text-red-600"
+                          onClick={() => handleRemoveMeasure(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dept-progress">Progress (%)</Label>
+                <Input
+                  id="dept-progress"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formState.progress}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, progress: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={closeDialog} disabled={isSaving}>
+                Hủy
+              </Button>
+              <Button type="button" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Đang lưu...' : 'Lưu'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
