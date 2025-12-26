@@ -23,6 +23,7 @@ export interface OKR {
   keyResults: KeyResult[];
   owner: string;
   dueDate: string;
+  linkedGoalId?: string;
 }
 
 export interface KPI {
@@ -35,6 +36,7 @@ export interface KPI {
   status: OKRStatus;
   trend: 'up' | 'down' | 'stable';
   history: { month: string; value: number }[];
+  linkedGoalId?: string;
 }
 
 export interface CSF {
@@ -88,6 +90,7 @@ export const okrs: OKR[] = [
     progress: 72,
     owner: 'Trần Thị Mai',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-1',
     keyResults: [
       { id: 'kr-1-1', title: 'Đạt 8,000 tỷ VND doanh thu', target: 8000, current: 6200, unit: 'tỷ VND' },
       { id: 'kr-1-2', title: 'Mở rộng 50 đại lý phân phối mới', target: 50, current: 38, unit: 'đại lý' },
@@ -103,6 +106,7 @@ export const okrs: OKR[] = [
     progress: 95,
     owner: 'Trần Thị Mai',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-5',
     keyResults: [
       { id: 'kr-2-1', title: 'Giảm chi phí nguyên liệu 5%', target: 5, current: 4.8, unit: '%' },
       { id: 'kr-2-2', title: 'Tăng hiệu quả sản xuất 10%', target: 10, current: 9.5, unit: '%' },
@@ -118,6 +122,7 @@ export const okrs: OKR[] = [
     progress: 88,
     owner: 'Phạm Thị Hoa',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-3',
     keyResults: [
       { id: 'kr-3-1', title: 'Đạt NPS 70+', target: 70, current: 68, unit: 'điểm' },
       { id: 'kr-3-2', title: 'Giảm thời gian phản hồi xuống <2h', target: 2, current: 1.8, unit: 'giờ' },
@@ -133,6 +138,7 @@ export const okrs: OKR[] = [
     progress: 78,
     owner: 'Phạm Thị Hoa',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-2',
     keyResults: [
       { id: 'kr-4-1', title: 'Tăng thị phần kem lên 45%', target: 45, current: 43, unit: '%' },
       { id: 'kr-4-2', title: 'Ra mắt 3 hương vị kem mới', target: 3, current: 2, unit: 'sản phẩm' },
@@ -148,6 +154,7 @@ export const okrs: OKR[] = [
     progress: 85,
     owner: 'Lê Hoàng Nam',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-4',
     keyResults: [
       { id: 'kr-5-1', title: 'Đạt 98% sản phẩm đạt chuẩn', target: 98, current: 97.5, unit: '%' },
       { id: 'kr-5-2', title: 'Giảm 30% khiếu nại chất lượng', target: 30, current: 28, unit: '%' },
@@ -163,6 +170,7 @@ export const okrs: OKR[] = [
     progress: 65,
     owner: 'Võ Minh Tuấn',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-4',
     keyResults: [
       { id: 'kr-6-1', title: 'Triển khai ERP cho 100% nhà máy', target: 100, current: 70, unit: '%' },
       { id: 'kr-6-2', title: 'Số hóa 80% quy trình', target: 80, current: 55, unit: '%' },
@@ -178,6 +186,7 @@ export const okrs: OKR[] = [
     progress: 82,
     owner: 'Nguyễn Văn An',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-6',
     keyResults: [
       { id: 'kr-7-1', title: 'Đào tạo 500 nhân sự về kỹ năng mới', target: 500, current: 420, unit: 'người' },
       { id: 'kr-7-2', title: 'Tỷ lệ giữ chân nhân tài đạt 90%', target: 90, current: 88, unit: '%' },
@@ -192,6 +201,7 @@ export const okrs: OKR[] = [
     progress: 75,
     owner: 'Phạm Thị Hoa',
     dueDate: '2024-12-31',
+    linkedGoalId: 'goal-3',
     keyResults: [
       { id: 'kr-8-1', title: 'Ra mắt 5 sản phẩm mới', target: 5, current: 4, unit: 'sản phẩm' },
       { id: 'kr-8-2', title: '20% doanh thu từ sản phẩm mới', target: 20, current: 15, unit: '%' },
@@ -211,6 +221,7 @@ export const kpis: KPI[] = [
     unit: 'tỷ VND',
     status: 'at_risk',
     trend: 'up',
+    linkedGoalId: 'goal-1',
     history: [
       { month: 'T1', value: 520 },
       { month: 'T2', value: 480 },
@@ -233,6 +244,7 @@ export const kpis: KPI[] = [
     unit: '%',
     status: 'on_track',
     trend: 'up',
+    linkedGoalId: 'goal-5',
     history: [
       { month: 'T1', value: 24.5 },
       { month: 'T2', value: 24.8 },
@@ -255,6 +267,7 @@ export const kpis: KPI[] = [
     unit: 'tỷ VND',
     status: 'on_track',
     trend: 'up',
+    linkedGoalId: 'goal-5',
     history: [
       { month: 'T1', value: 62 },
       { month: 'T2', value: 58 },
@@ -278,6 +291,7 @@ export const kpis: KPI[] = [
     unit: '%',
     status: 'at_risk',
     trend: 'stable',
+    linkedGoalId: 'goal-2',
     history: [
       { month: 'T1', value: 42 },
       { month: 'T2', value: 42.2 },
@@ -300,6 +314,7 @@ export const kpis: KPI[] = [
     unit: 'điểm',
     status: 'on_track',
     trend: 'up',
+    linkedGoalId: 'goal-3',
     history: [
       { month: 'T1', value: 62 },
       { month: 'T2', value: 63 },
@@ -322,6 +337,7 @@ export const kpis: KPI[] = [
     unit: '%',
     status: 'on_track',
     trend: 'up',
+    linkedGoalId: 'goal-3',
     history: [
       { month: 'T1', value: 86 },
       { month: 'T2', value: 87 },
@@ -345,6 +361,7 @@ export const kpis: KPI[] = [
     unit: '%',
     status: 'on_track',
     trend: 'up',
+    linkedGoalId: 'goal-4',
     history: [
       { month: 'T1', value: 78 },
       { month: 'T2', value: 79 },
@@ -367,6 +384,7 @@ export const kpis: KPI[] = [
     unit: '%',
     status: 'on_track',
     trend: 'stable',
+    linkedGoalId: 'goal-4',
     history: [
       { month: 'T1', value: 96.8 },
       { month: 'T2', value: 97 },
@@ -389,6 +407,7 @@ export const kpis: KPI[] = [
     unit: '%',
     status: 'off_track',
     trend: 'up',
+    linkedGoalId: 'goal-4',
     history: [
       { month: 'T1', value: 30 },
       { month: 'T2', value: 32 },
@@ -412,6 +431,7 @@ export const kpis: KPI[] = [
     unit: 'người',
     status: 'on_track',
     trend: 'up',
+    linkedGoalId: 'goal-6',
     history: [
       { month: 'T1', value: 45 },
       { month: 'T2', value: 42 },
@@ -434,6 +454,7 @@ export const kpis: KPI[] = [
     unit: '%',
     status: 'on_track',
     trend: 'stable',
+    linkedGoalId: 'goal-6',
     history: [
       { month: 'T1', value: 87 },
       { month: 'T2', value: 87 },
@@ -456,6 +477,7 @@ export const kpis: KPI[] = [
     unit: 'sản phẩm',
     status: 'on_track',
     trend: 'up',
+    linkedGoalId: 'goal-3',
     history: [
       { month: 'T1', value: 0 },
       { month: 'T2', value: 1 },
@@ -664,6 +686,7 @@ export interface OGSMGoal {
   target: string;
   owner: string;
   progress: number;
+  linkedKpiIds?: string[];
 }
 
 export interface OGSMStrategy {
@@ -671,6 +694,7 @@ export interface OGSMStrategy {
   goalId: string;
   name: string;
   measures: string[];
+  linkedKpiIds?: string[];
 }
 
 export const ogsmObjectives: OGSMObjective[] = [
@@ -682,25 +706,25 @@ export const ogsmObjectives: OGSMObjective[] = [
 
 export const ogsmGoals: OGSMGoal[] = [
   // Financial
-  { id: 'goal-1', objectiveId: 'obj-1', name: 'Tăng trưởng doanh thu', target: '+30%', owner: 'CEO / Sales', progress: 72 },
-  { id: 'goal-5', objectiveId: 'obj-1', name: 'Tối ưu chi phí (Cost Efficiency)', target: '-5%', owner: 'CFO + Ops', progress: 78 },
+  { id: 'goal-1', objectiveId: 'obj-1', name: 'Tăng trưởng doanh thu', target: '+30%', owner: 'CEO / Sales', progress: 72, linkedKpiIds: ['kpi-1'] },
+  { id: 'goal-5', objectiveId: 'obj-1', name: 'Tối ưu chi phí (Cost Efficiency)', target: '-5%', owner: 'CFO + Ops', progress: 78, linkedKpiIds: ['kpi-2', 'kpi-3'] },
 
   // External
-  { id: 'goal-2', objectiveId: 'obj-2', name: 'Mở rộng thị phần', target: '+10%', owner: 'Sales GT/MT', progress: 85 },
-  { id: 'goal-3', objectiveId: 'obj-2', name: 'Phát triển sản phẩm mới', target: '+10%', owner: 'Marketing + R&D', progress: 65 },
+  { id: 'goal-2', objectiveId: 'obj-2', name: 'Mở rộng thị phần', target: '+10%', owner: 'Sales GT/MT', progress: 85, linkedKpiIds: ['kpi-4'] },
+  { id: 'goal-3', objectiveId: 'obj-2', name: 'Phát triển sản phẩm mới', target: '+10%', owner: 'Marketing + R&D', progress: 65, linkedKpiIds: ['kpi-5', 'kpi-6', 'kpi-12'] },
 
   // Internal
-  { id: 'goal-4', objectiveId: 'obj-3', name: 'Chuyển đổi số & Tự động hóa', target: '100% quy trình', owner: 'CTO / Ops', progress: 45 },
+  { id: 'goal-4', objectiveId: 'obj-3', name: 'Chuyển đổi số & Tự động hóa', target: '100% quy trình', owner: 'CTO / Ops', progress: 45, linkedKpiIds: ['kpi-7', 'kpi-8', 'kpi-9'] },
 
   // Learning
-  { id: 'goal-6', objectiveId: 'obj-4', name: 'Đào tạo & Phát triển', target: '50h/người/năm', owner: 'HR Director', progress: 82 },
+  { id: 'goal-6', objectiveId: 'obj-4', name: 'Đào tạo & Phát triển', target: '50h/người/năm', owner: 'HR Director', progress: 82, linkedKpiIds: ['kpi-10', 'kpi-11'] },
 ];
 
 export const ogsmStrategies: OGSMStrategy[] = [
-  { id: 'str-1', goalId: 'goal-2', name: 'Tăng độ phủ, forecast chuẩn', measures: ['Doanh thu', 'OOS rate'] },
-  { id: 'str-2', goalId: 'goal-3', name: 'Push NPD', measures: ['Sell-out NPD'] },
-  { id: 'str-3', goalId: 'goal-4', name: 'Mở rộng kênh online & xuất khẩu', measures: ['Doanh thu online', 'Doanh thu xuất khẩu'] },
-  { id: 'str-4', goalId: 'goal-5', name: 'Tối ưu chi phí sản xuất', measures: ['Chi phí/đơn vị', 'Hiệu suất nhà máy'] },
+  { id: 'str-1', goalId: 'goal-2', name: 'Tăng độ phủ, forecast chuẩn', measures: ['Doanh thu', 'OOS rate'], linkedKpiIds: ['kpi-1', 'kpi-4'] },
+  { id: 'str-2', goalId: 'goal-3', name: 'Push NPD', measures: ['Sell-out NPD'], linkedKpiIds: ['kpi-12'] },
+  { id: 'str-3', goalId: 'goal-4', name: 'Mở rộng kênh online & xuất khẩu', measures: ['Doanh thu online', 'Doanh thu xuất khẩu'], linkedKpiIds: ['kpi-9'] },
+  { id: 'str-4', goalId: 'goal-5', name: 'Tối ưu chi phí sản xuất', measures: ['Chi phí/đơn vị', 'Hiệu suất nhà máy'], linkedKpiIds: ['kpi-7', 'kpi-2'] },
 ];
 
 // OGSM Department Level
@@ -728,11 +752,38 @@ export const departmentOGSMs: DepartmentOGSM[] = [
   { id: 'dept-8', department: 'HR', purpose: 'Nhân sự', objective: 'Đào tạo', strategy: 'Skill matrix', measures: ['Training hours', 'Retention'], owner: 'HRD', progress: 82, linkedGoalId: 'goal-6', kpiIds: ['kpi-10', 'kpi-11'] },
 ];
 
+export interface DepartmentMeasure {
+  id: string;
+  deptOgsmId: string;
+  name: string;
+  linkedKpiId?: string;
+}
+
+export const departmentMeasures: DepartmentMeasure[] = [
+  { id: 'deptm-1', deptOgsmId: 'dept-1', name: 'Doanh thu', linkedKpiId: 'kpi-1' },
+  { id: 'deptm-2', deptOgsmId: 'dept-1', name: 'OOS rate' },
+  { id: 'deptm-3', deptOgsmId: 'dept-2', name: 'Doanh số MT', linkedKpiId: 'kpi-4' },
+  { id: 'deptm-4', deptOgsmId: 'dept-2', name: 'Share of shelf' },
+  { id: 'deptm-5', deptOgsmId: 'dept-3', name: 'Sell-out NPD', linkedKpiId: 'kpi-5' },
+  { id: 'deptm-6', deptOgsmId: 'dept-3', name: 'Brand awareness' },
+  { id: 'deptm-7', deptOgsmId: 'dept-4', name: 'Số SP mới', linkedKpiId: 'kpi-12' },
+  { id: 'deptm-8', deptOgsmId: 'dept-4', name: 'Time-to-market' },
+  { id: 'deptm-9', deptOgsmId: 'dept-5', name: 'OEE', linkedKpiId: 'kpi-7' },
+  { id: 'deptm-10', deptOgsmId: 'dept-5', name: 'Waste reduction' },
+  { id: 'deptm-11', deptOgsmId: 'dept-6', name: 'Cost per delivery' },
+  { id: 'deptm-12', deptOgsmId: 'dept-6', name: 'Lead time' },
+  { id: 'deptm-13', deptOgsmId: 'dept-7', name: 'Progress', linkedKpiId: 'kpi-9' },
+  { id: 'deptm-14', deptOgsmId: 'dept-7', name: 'Uptime' },
+  { id: 'deptm-15', deptOgsmId: 'dept-8', name: 'Training hours', linkedKpiId: 'kpi-10' },
+  { id: 'deptm-16', deptOgsmId: 'dept-8', name: 'Retention', linkedKpiId: 'kpi-11' },
+];
+
 // Fishbone Analysis
 export type ActionStatus = 'pending' | 'done' | 'overdue';
 
 export interface FishboneItem {
   id: string;
+  kpiId?: string;
   factor: string;
   problem: string;
   action: string;
@@ -743,12 +794,12 @@ export interface FishboneItem {
 }
 
 export const fishboneItems: FishboneItem[] = [
-  { id: 'fb-1', factor: 'Forecast', problem: 'Sai 20%', action: 'Chuẩn hóa forecast tuần', owner: 'Sales Planning', deadline: 'Thứ 6 hàng tuần', result: 'Accuracy ≥ 80%', status: 'done' },
-  { id: 'fb-2', factor: 'Kho', problem: 'Không có cảnh báo', action: 'Dashboard tuổi hàng', owner: 'Kho', deadline: 'Thứ 3', result: 'Báo cáo tuần', status: 'done' },
-  { id: 'fb-3', factor: 'Trade', problem: 'Không push hàng', action: 'Mini-campaign đẩy hàng', owner: 'Trade', deadline: 'Hàng tháng', result: '+12% bán ra', status: 'pending' },
-  { id: 'fb-4', factor: 'Sản xuất', problem: 'OEE thấp', action: 'Maintenance preventive', owner: 'Production', deadline: 'Hàng tuần', result: 'OEE ≥ 85%', status: 'pending' },
-  { id: 'fb-5', factor: 'NPD', problem: 'Chậm ra mắt', action: 'Stage-gate review weekly', owner: 'R&D', deadline: 'Thứ 4', result: 'On-time launch', status: 'done' },
-  { id: 'fb-6', factor: 'Logistics', problem: 'Chi phí cao', action: 'Route optimization', owner: 'Logistics', deadline: 'Tháng 12', result: '-10% chi phí', status: 'overdue' },
+  { id: 'fb-1', kpiId: 'kpi-9', factor: 'Forecast', problem: 'Sai 20%', action: 'Chuẩn hóa forecast tuần', owner: 'Sales Planning', deadline: 'Thứ 6 hàng tuần', result: 'Accuracy ≥ 80%', status: 'done' },
+  { id: 'fb-2', kpiId: 'kpi-9', factor: 'Kho', problem: 'Không có cảnh báo', action: 'Dashboard tuổi hàng', owner: 'Kho', deadline: 'Thứ 3', result: 'Báo cáo tuần', status: 'done' },
+  { id: 'fb-3', kpiId: 'kpi-1', factor: 'Trade', problem: 'Không push hàng', action: 'Mini-campaign đẩy hàng', owner: 'Trade', deadline: 'Hàng tháng', result: '+12% bán ra', status: 'pending' },
+  { id: 'fb-4', kpiId: 'kpi-7', factor: 'Sản xuất', problem: 'OEE thấp', action: 'Maintenance preventive', owner: 'Production', deadline: 'Hàng tuần', result: 'OEE ≥ 85%', status: 'pending' },
+  { id: 'fb-5', kpiId: 'kpi-12', factor: 'NPD', problem: 'Chậm ra mắt', action: 'Stage-gate review weekly', owner: 'R&D', deadline: 'Thứ 4', result: 'On-time launch', status: 'done' },
+  { id: 'fb-6', kpiId: 'kpi-2', factor: 'Logistics', problem: 'Chi phí cao', action: 'Route optimization', owner: 'Logistics', deadline: 'Tháng 12', result: '-10% chi phí', status: 'overdue' },
 ];
 
 // Action Weekly Log
@@ -756,6 +807,8 @@ export interface WeeklyAction {
   id: string;
   week: string;
   linkedGoal: string;
+  linkedGoalId?: string;
+  linkedKpiId?: string | null;
   solution: string;
   activity: string;
   owner: string;
@@ -764,13 +817,13 @@ export interface WeeklyAction {
 }
 
 export const weeklyActions: WeeklyAction[] = [
-  { id: 'wa-1', week: 'Tuần 49', linkedGoal: 'Giảm tồn', solution: 'Tư duy "Cách làm nào mới" (Solution) để đạt được mục tiêu khó', activity: 'Rà SKU ≤ 60 ngày', owner: 'Kho', status: 'done', result: '28 SKU' },
-  { id: 'wa-2', week: 'Tuần 49', linkedGoal: 'Forecast', solution: 'Chuẩn hóa quy trình', activity: 'Update forecast', owner: 'Sales Planning', status: 'pending', result: 'Accuracy 75%' },
-  { id: 'wa-3', week: 'Tuần 49', linkedGoal: 'Tăng doanh thu', solution: 'Push activation', activity: 'Chạy campaign cuối năm', owner: 'Trade', status: 'pending', result: 'Target +15%' },
-  { id: 'wa-4', week: 'Tuần 48', linkedGoal: 'NPD', solution: 'Speed up launch', activity: 'Hoàn thiện packaging Kem Healthy', owner: 'Marketing', status: 'done', result: 'Approved' },
-  { id: 'wa-5', week: 'Tuần 48', linkedGoal: 'Chi phí', solution: 'Lean initiative', activity: 'Giảm waste line 2', owner: 'Production', status: 'done', result: '-8% waste' },
-  { id: 'wa-6', week: 'Tuần 47', linkedGoal: 'OEE', solution: 'Preventive maintenance', activity: 'Bảo trì máy đóng gói', owner: 'Maintenance', status: 'done', result: 'OEE 83%' },
-  { id: 'wa-7', week: 'Tuần 47', linkedGoal: 'Forecast', solution: 'Data accuracy', activity: 'Reconcile inventory', owner: 'Kho', status: 'done', result: '98% accurate' },
+  { id: 'wa-1', week: 'Tuần 49', linkedGoal: 'Giảm tồn', linkedGoalId: 'goal-5', linkedKpiId: null, solution: 'Tư duy "Cách làm nào mới" (Solution) để đạt được mục tiêu khó', activity: 'Rà SKU ≤ 60 ngày', owner: 'Kho', status: 'done', result: '28 SKU' },
+  { id: 'wa-2', week: 'Tuần 49', linkedGoal: 'Forecast', linkedGoalId: 'goal-1', linkedKpiId: 'kpi-1', solution: 'Chuẩn hóa quy trình', activity: 'Update forecast', owner: 'Sales Planning', status: 'pending', result: 'Accuracy 75%' },
+  { id: 'wa-3', week: 'Tuần 49', linkedGoal: 'Tăng doanh thu', linkedGoalId: 'goal-1', linkedKpiId: 'kpi-1', solution: 'Push activation', activity: 'Chạy campaign cuối năm', owner: 'Trade', status: 'pending', result: 'Target +15%' },
+  { id: 'wa-4', week: 'Tuần 48', linkedGoal: 'NPD', linkedGoalId: 'goal-3', linkedKpiId: 'kpi-12', solution: 'Speed up launch', activity: 'Hoàn thiện packaging Kem Healthy', owner: 'Marketing', status: 'done', result: 'Approved' },
+  { id: 'wa-5', week: 'Tuần 48', linkedGoal: 'Chi phí', linkedGoalId: 'goal-5', linkedKpiId: 'kpi-2', solution: 'Lean initiative', activity: 'Giảm waste line 2', owner: 'Production', status: 'done', result: '-8% waste' },
+  { id: 'wa-6', week: 'Tuần 47', linkedGoal: 'OEE', linkedGoalId: 'goal-4', linkedKpiId: 'kpi-7', solution: 'Preventive maintenance', activity: 'Bảo trì máy đóng gói', owner: 'Maintenance', status: 'done', result: 'OEE 83%' },
+  { id: 'wa-7', week: 'Tuần 47', linkedGoal: 'Forecast', linkedGoalId: 'goal-1', linkedKpiId: null, solution: 'Data accuracy', activity: 'Reconcile inventory', owner: 'Kho', status: 'done', result: '98% accurate' },
 ];
 
 // Review Process
