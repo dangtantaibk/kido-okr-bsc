@@ -144,6 +144,7 @@ CREATE TABLE okr_users (
   full_name TEXT NOT NULL,
   role TEXT NOT NULL, -- 'CEO', 'CFO', 'CMO', 'Director', 'Manager', 'Staff'
   avatar_url TEXT,
+  openproject_user_id INTEGER, -- Link to OpenProject User ID
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -234,6 +235,7 @@ CREATE TABLE okr_strategies (
   name TEXT NOT NULL,
   description TEXT,
   priority INTEGER DEFAULT 0,
+  openproject_project_id TEXT, -- Link to OpenProject Project ID
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -492,26 +494,19 @@ CREATE TABLE okr_fishbone_items (
 );
 ```
 
-### 18. okr_weekly_actions
-
-Weekly Action Log.
-
-```sql
+-- [DEPRECATED] Weekly Actions
+-- Replaced by OpenProject Work Packages
 CREATE TABLE okr_weekly_actions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID REFERENCES okr_organizations(id) ON DELETE CASCADE,
-  week TEXT NOT NULL, -- 'Tuần 49', 'Tuần 48'
-  
+  week TEXT NOT NULL,
   linked_goal_id UUID REFERENCES okr_goals(id),
   linked_kpi_id UUID REFERENCES okr_kpis(id),
-  
-  solution TEXT, -- Tư duy "Cách làm nào mới"
+  solution TEXT,
   activity TEXT NOT NULL,
-  
   owner_id UUID REFERENCES okr_users(id),
   status okr_action_status_type DEFAULT 'pending',
   result TEXT,
-  
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

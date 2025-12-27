@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -50,7 +51,6 @@ import {
   BookOpen,
   Calendar,
   User,
-  MoreHorizontal,
   MoveRight
 } from 'lucide-react';
 import {
@@ -62,7 +62,7 @@ import {
 import type { OKR } from '@/data/mock-data';
 import { getThemeColors } from '@/lib/theme';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { getOKRsByQuarter } from '@/lib/supabase/queries/okrs';
+import { getOKRsByQuarter, updateOKRPositions } from '@/lib/supabase/queries/okrs';
 import { mapOKRRow } from '@/lib/supabase/mappers';
 import { useOrganization } from '@/contexts/organization-context';
 import { formatQuarterLabel, quarterOptions } from '@/lib/period';
@@ -73,6 +73,66 @@ const perspectiveIcons = {
   external: Users,
   internal: Settings2,
   learning: BookOpen,
+};
+
+const perspectiveOrder: Perspective[] = ['financial', 'external', 'internal', 'learning'];
+
+const getOGSMSource = (okr: OKR) => {
+  if (okr.departmentId) {
+    const details = [okr.departmentName, okr.linkedGoalName].filter(Boolean).join(' / ');
+    return {
+      href: '/ogsm/department',
+      label: details ? `OGSM phòng ban: ${details}` : 'OGSM phòng ban',
+    };
+  }
+
+  if (okr.linkedGoalName || okr.linkedObjectiveName) {
+    const details = [okr.linkedObjectiveName, okr.linkedGoalName].filter(Boolean).join(' / ');
+    return {
+      href: '/ogsm',
+      label: details ? `OGSM công ty: ${details}` : 'OGSM công ty',
+    };
+  }
+
+  return null;
+};
+
+const normalizeSortOrder = (okrs: OKR[]) => {
+  const nextIndex: Record<Perspective, number> = {
+    financial: 0,
+    external: 0,
+    internal: 0,
+    learning: 0,
+  };
+
+  return okrs.map((okr) => {
+    if (typeof okr.sortOrder === 'number' && Number.isFinite(okr.sortOrder)) {
+      return okr;
+    }
+
+    const sortOrder = nextIndex[okr.perspective];
+    nextIndex[okr.perspective] = sortOrder + 1;
+    return { ...okr, sortOrder };
+  });
+};
+
+const sortOKRs = (okrs: OKR[]) => {
+  const perspectiveIndex = new Map(perspectiveOrder.map((p, index) => [p, index]));
+  return [...okrs].sort((a, b) => {
+    const perspectiveDiff =
+      (perspectiveIndex.get(a.perspective) ?? 0) - (perspectiveIndex.get(b.perspective) ?? 0);
+    if (perspectiveDiff !== 0) {
+      return perspectiveDiff;
+    }
+
+    const orderA = typeof a.sortOrder === 'number' ? a.sortOrder : Number.MAX_SAFE_INTEGER;
+    const orderB = typeof b.sortOrder === 'number' ? b.sortOrder : Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
 };
 
 export default function OKRsPage() {
@@ -116,7 +176,8 @@ export default function OKRsPage() {
           return;
         }
 
-        setManagedOKRs((okrRows || []).map(mapOKRRow));
+        const mappedOKRs = normalizeSortOrder((okrRows || []).map(mapOKRRow));
+        setManagedOKRs(sortOKRs(mappedOKRs));
       } catch (error) {
         console.error('Failed to load OKRs', error);
       } finally {
@@ -144,8 +205,26 @@ export default function OKRsPage() {
     setExpandedOKR(expandedOKR === id ? null : id);
   };
 
+  const persistOKRPositions = async (items: OKR[]) => {
+    if (items.length === 0) {
+      return;
+    }
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const updates = items.map((okr) => ({
+        id: okr.id,
+        perspective: okr.perspective,
+        sort_order: okr.sortOrder ?? 0,
+      }));
+      await updateOKRPositions(supabase, updates);
+    } catch (error) {
+      console.error('Failed to update OKR order', error);
+    }
+  };
+
   const handleDragEnd = (result: DropResult) => {
-    const { source, destination, draggableId } = result;
+    const { source, destination } = result;
 
     if (!destination) {
       return;
@@ -158,35 +237,57 @@ export default function OKRsPage() {
       return;
     }
 
-    // Find the OKR being dragged
-    const movedOKR = managedOKRs.find(o => o.id === draggableId);
-    if (!movedOKR) return;
+    const sourcePerspective = source.droppableId as Perspective;
+    const destinationPerspective = destination.droppableId as Perspective;
+    const sourceItems = managedOKRs.filter((o) => o.perspective === sourcePerspective);
+    const destinationItems = managedOKRs.filter((o) => o.perspective === destinationPerspective);
 
-    // Create a new array
-    let newOKRs = Array.from(managedOKRs);
+    if (sourcePerspective === destinationPerspective) {
+      const reordered = Array.from(sourceItems);
+      const [removed] = reordered.splice(source.index, 1);
+      reordered.splice(destination.index, 0, removed);
 
-    // If moving to a different column (perspective)
-    if (source.droppableId !== destination.droppableId) {
-      const newPerspective = destination.droppableId as Perspective;
-
-      const updatedOKR = { ...movedOKR, perspective: newPerspective };
-      newOKRs = newOKRs.map(o => o.id === draggableId ? updatedOKR : o);
-
-      // Update state
-      setManagedOKRs(newOKRs);
-    } else {
-      // Reordering within same list logic (simplified)
-      const perspective = source.droppableId as Perspective;
-      const groupItems = newOKRs.filter(o => o.perspective === perspective);
-      const [removed] = groupItems.splice(source.index, 1);
-      groupItems.splice(destination.index, 0, removed);
-      const otherItems = newOKRs.filter(o => o.perspective !== perspective);
-      setManagedOKRs([...otherItems, ...groupItems]);
+      const orderedGroup = reordered.map((okr, index) => ({
+        ...okr,
+        sortOrder: index,
+      }));
+      const remaining = managedOKRs.filter((o) => o.perspective !== sourcePerspective);
+      const nextOKRs = sortOKRs([...remaining, ...orderedGroup]);
+      setManagedOKRs(nextOKRs);
+      void persistOKRPositions(orderedGroup);
+      return;
     }
+
+    const sourceClone = Array.from(sourceItems);
+    const [moved] = sourceClone.splice(source.index, 1);
+    if (!moved) {
+      return;
+    }
+
+    const destinationClone = Array.from(destinationItems);
+    const movedWithPerspective = { ...moved, perspective: destinationPerspective };
+    destinationClone.splice(destination.index, 0, movedWithPerspective);
+
+    const orderedSource = sourceClone.map((okr, index) => ({
+      ...okr,
+      sortOrder: index,
+    }));
+    const orderedDestination = destinationClone.map((okr, index) => ({
+      ...okr,
+      sortOrder: index,
+    }));
+
+    const remaining = managedOKRs.filter(
+      (o) => o.perspective !== sourcePerspective && o.perspective !== destinationPerspective
+    );
+    const nextOKRs = sortOKRs([...remaining, ...orderedSource, ...orderedDestination]);
+    setManagedOKRs(nextOKRs);
+    void persistOKRPositions([...orderedSource, ...orderedDestination]);
   };
 
   const activeOKR = managedOKRs.find(o => o.id === selectedOKRId);
   const activeTheme = activeOKR ? getThemeColors(activeOKR.perspective) : null;
+  const activeOGSMSource = activeOKR ? getOGSMSource(activeOKR) : null;
 
   // If not mounted (SSR), render a placeholder or the non-dnd version to avoid hydration mismatch
   if (!isMounted || isLoading) {
@@ -373,49 +474,65 @@ export default function OKRsPage() {
                             ref={provided.innerRef}
                             {...provided.droppableProps}
                           >
-                            {perspectiveOKRs.map((okr, index) => (
-                              <Draggable key={okr.id} draggableId={okr.id} index={index}>
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    onClick={() => setSelectedOKRId(okr.id)}
-                                    style={{
-                                      ...provided.draggableProps.style,
-                                      opacity: snapshot.isDragging ? 0.8 : 1,
-                                    }}
-                                    className={`rounded-xl border bg-white p-4 transition-all hover:border-blue-300 hover:shadow-md group relative overflow-hidden cursor-pointer ${snapshot.isDragging ? 'shadow-xl rotate-2 ring-2 ring-blue-400' : ''}`}
-                                  >
-                                    <div className={`absolute top-0 left-0 w-1 h-full ${theme.solidBg}`}></div>
-                                    <div className="pl-2">
-                                      <div className="flex items-start justify-between mb-2">
-                                        <Badge
-                                          variant="outline"
-                                          className={`${statusColors[okr.status]} border-0 text-white text-[10px] px-1.5 py-0 h-5`}
-                                        >
-                                          {statusLabels[okr.status]}
-                                        </Badge>
-                                        <span className={`text-sm font-bold ${theme.textColor}`}>{okr.progress}%</span>
-                                      </div>
-                                      <p className="text-sm font-semibold text-slate-900 leading-snug mb-3 hover:text-blue-700 transition-colors line-clamp-2">{okr.objective}</p>
-
-                                      <div className="space-y-1">
-                                        <Progress value={okr.progress} className={`h-1.5 bg-slate-100 [&>div]:${theme.progressBg} [&>div]:bg-current text-${theme.solidBg.replace('bg-', '')}`} />
-                                        <div className="flex justify-between items-center pt-1">
-                                          <p className="text-xs text-slate-500">
-                                            {okr.keyResults.length} KRs
-                                          </p>
-                                          <p className="text-xs font-medium text-slate-600 truncate max-w-[100px]">
-                                            {okr.owner}
-                                          </p>
+                            {perspectiveOKRs.map((okr, index) => {
+                              const ogsmSource = getOGSMSource(okr);
+                              return (
+                                <Draggable key={okr.id} draggableId={okr.id} index={index}>
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      onClick={() => setSelectedOKRId(okr.id)}
+                                      style={{
+                                        ...provided.draggableProps.style,
+                                        opacity: snapshot.isDragging ? 0.8 : 1,
+                                      }}
+                                      className={`rounded-xl border bg-white p-4 transition-all hover:border-blue-300 hover:shadow-md group relative overflow-hidden cursor-pointer ${snapshot.isDragging ? 'shadow-xl rotate-2 ring-2 ring-blue-400' : ''}`}
+                                    >
+                                      <div className={`absolute top-0 left-0 w-1 h-full ${theme.solidBg}`}></div>
+                                      <div className="pl-2">
+                                        <div className="flex items-start justify-between mb-2">
+                                          <Badge
+                                            variant="outline"
+                                            className={`${statusColors[okr.status]} border-0 text-white text-[10px] px-1.5 py-0 h-5`}
+                                          >
+                                            {statusLabels[okr.status]}
+                                          </Badge>
+                                          <span className={`text-sm font-bold ${theme.textColor}`}>{okr.progress}%</span>
                                         </div>
+                                        <p className="text-sm font-semibold text-slate-900 leading-snug mb-3 hover:text-blue-700 transition-colors line-clamp-2">{okr.objective}</p>
+
+                                        <div className="space-y-1">
+                                          <Progress value={okr.progress} className={`h-1.5 bg-slate-100 [&>div]:${theme.progressBg} [&>div]:bg-current text-${theme.solidBg.replace('bg-', '')}`} />
+                                          <div className="flex justify-between items-center pt-1">
+                                            <p className="text-xs text-slate-500">
+                                              {okr.keyResults.length} KRs
+                                            </p>
+                                            <p className="text-xs font-medium text-slate-600 truncate max-w-[100px]">
+                                              {okr.owner}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        {ogsmSource ? (
+                                          <Link
+                                            href={ogsmSource.href}
+                                            className="mt-2 flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-600"
+                                            onClick={(event) => event.stopPropagation()}
+                                          >
+                                            <span className="truncate">{ogsmSource.label}</span>
+                                            <MoveRight className="h-3 w-3 shrink-0" />
+                                          </Link>
+                                        ) : (
+                                          <p className="mt-2 text-[11px] text-slate-400">Chưa liên kết OGSM</p>
+                                        )}
                                       </div>
                                     </div>
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
+                                  )}
+                                </Draggable>
+                              );
+                            })}
                             {provided.placeholder}
                             {perspectiveOKRs.length === 0 && (
                               <div className="h-32 flex flex-col items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">
@@ -451,6 +568,7 @@ export default function OKRsPage() {
                 const Icon = perspectiveIcons[okr.perspective];
                 const isExpanded = expandedOKR === okr.id;
                 const theme = getThemeColors(okr.perspective);
+                const ogsmSource = getOGSMSource(okr);
 
                 return (
                   <Card key={okr.id} className="border-0 shadow-md transition-all hover:shadow-lg overflow-hidden p-0 gap-0">
@@ -486,6 +604,18 @@ export default function OKRsPage() {
                               <p className="mt-1 text-sm text-slate-500">
                                 Phụ trách: {okr.owner}
                               </p>
+                              {ogsmSource ? (
+                                <Link
+                                  href={ogsmSource.href}
+                                  className="mt-1 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <span className="truncate max-w-[320px]">{ogsmSource.label}</span>
+                                  <MoveRight className="h-3 w-3 shrink-0" />
+                                </Link>
+                              ) : (
+                                <p className="mt-1 text-xs text-slate-400">Chưa liên kết OGSM</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-6">
@@ -588,6 +718,17 @@ export default function OKRsPage() {
                       {activeOKR.quarter}
                     </div>
                   </div>
+                  {activeOGSMSource ? (
+                    <Link
+                      href={activeOGSMSource.href}
+                      className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-blue-700"
+                    >
+                      <span className="truncate">{activeOGSMSource.label}</span>
+                      <MoveRight className="h-3 w-3 shrink-0" />
+                    </Link>
+                  ) : (
+                    <p className="mt-3 text-xs text-slate-400">Chưa liên kết OGSM</p>
+                  )}
                 </SheetHeader>
 
                 <div className="p-6 space-y-6">

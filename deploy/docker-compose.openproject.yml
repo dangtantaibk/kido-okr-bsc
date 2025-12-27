@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # --- SERVICE 1: PROXY FIX (Giờ sẽ nằm sau HTTPS của Coolify) ---
+  nginx_fix:
+    image: nginx:alpine
+    restart: always
+    # QUAN TRỌNG: Bỏ mapping cổng 8091 đi, để Coolify tự điều phối
+    expose:
+      - "80"
+    depends_on:
+      - web
+    command: >
+      /bin/sh -c "echo '
+      server {
+        listen 80;
+        location / {
+          proxy_pass http://web:80;
+          
+          # Giả lập HTTPS để OpenProject tin tưởng
+          proxy_set_header Host \$$http_host;
+          proxy_set_header X-Real-IP \$$remote_addr;
+          proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto https; 
+          
+          # Xóa header cấm
+          proxy_hide_header Content-Security-Policy;
+          proxy_hide_header X-Frame-Options;
+          
+          # Cấp phép Iframe
+          add_header Content-Security-Policy \"frame-ancestors *\";
+          add_header X-Frame-Options \"ALLOWALL\";
+        }
+      }
+      ' > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+
+  # --- SERVICE 2: DATABASE ---
+  db:
+    image: 'postgres:13'
+    restart: always
+    environment:
+      POSTGRES_DB: openproject
+      POSTGRES_USER: openproject
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:-AiOiJKV1QiLCJhbGciOiJIUzI1Ni}'
+    volumes:
+      - 'openproject_pgdata:/var/lib/postgresql/data'
+
+  # --- SERVICE 3: CACHE ---
+  cache:
+    image: memcached
+    restart: always
+
+  # --- SERVICE 4: OPENPROJECT ---
+  web:
+    image: 'openproject/community:13'
+    restart: always
+    environment:
+      # Bật chế độ HTTPS
+      OPENPROJECT_HTTPS: 'true'
+      
+      # Domain của bạn (Điền đúng cái sslip.io hoặc domain thật)
+      OPENPROJECT_HOST__NAME: '${OPENPROJECT_DOMAIN:-openproject.61.28.229.105.sslip.io}'
+      
+      OPENPROJECT_SECRET__KEY__BASE: '${SECRET_KEY_BASE:-eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NjQ3MTE2MCwiZXhwIjo0OTIyMTQ0NzYwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.Kd9uYHquruwXLLVxirvRJip_Z73WEWHJ6jYKIMnpIiE}'
+      DATABASE_URL: 'postgres://openproject:${POSTGRES_PASSWORD:-AiOiJKV1QiLCJhbGciOiJIUzI1Ni}@db:5432/openproject'
+      OPENPROJECT_RAILS__CACHE__STORE: memcache
+      OPENPROJECT_CACHE__MEMCACHE__SERVER: 'cache:11211'
+      
+      # QUAN TRỌNG NHẤT: Cho phép Cookie chạy trong Iframe (Chỉ hoạt động khi có HTTPS)
+      OPENPROJECT_RAILS__SAME__SITE__COOKIE: 'None'
+      # Cho phép Iframe từ mọi nguồn (Ghi đè mặc định 'self')
+      OPENPROJECT_FRAME__ANCESTORS: "*"
+      
+      OPENPROJECT_RAILS__RELATIVE__URL__ROOT: ''
+      
+    volumes:
+      - 'openproject_static:/var/openproject/assets'
+      - 'openproject_storage:/var/openproject/storage'
+    depends_on:
+      - db
+      - cache
+    expose:
+      - "80"
+
+volumes:
+  openproject_pgdata: 
+  openproject_static: 
+  openproject_storage:

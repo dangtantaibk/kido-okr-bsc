@@ -20,6 +20,11 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(num) ? num : fallback;
 };
 
+const toOptionalNumber = (value: unknown) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
+};
+
 const toString = (value: unknown) => {
   if (typeof value === 'string') {
     return value;
@@ -60,6 +65,13 @@ export const mapOKRRow = (row: any): OKR => {
   const quarter = toString(row?.quarter);
   const fiscalYear = toString(row?.fiscal_year);
   const quarterLabel = formatQuarterLabel(quarter, fiscalYear) || quarter;
+  const linkedGoal = row?.linked_goal;
+  const linkedObjective = linkedGoal?.objective;
+  const department = row?.department;
+  const linkedGoalName = toString(linkedGoal?.name) || undefined;
+  const linkedObjectiveName = toString(linkedObjective?.name) || undefined;
+  const departmentName = toString(department?.name) || undefined;
+  const departmentId = row?.department_id || department?.id || undefined;
 
   return {
     id: toString(row?.id),
@@ -71,6 +83,11 @@ export const mapOKRRow = (row: any): OKR => {
     owner: formatUserLabel(row?.owner),
     dueDate: toString(row?.due_date),
     linkedGoalId: row?.linked_goal_id || undefined,
+    linkedGoalName,
+    linkedObjectiveName,
+    departmentId,
+    departmentName,
+    sortOrder: toOptionalNumber(row?.sort_order),
     keyResults: (row?.key_results || []).map((kr: any) => ({
       id: toString(kr?.id),
       title: toString(kr?.title),
