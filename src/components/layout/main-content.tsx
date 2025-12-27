@@ -12,11 +12,13 @@ export function MainContent({ children }: MainContentProps) {
   const { collapsed } = useSidebar();
   const pathname = usePathname();
   const isLoginRoute = pathname === '/login';
+  const isFullScreenRoute = pathname.startsWith('/projects');
+  const isEdgeToEdge = isLoginRoute || isFullScreenRoute;
 
   return (
     <main className={cn(
       'flex-1 transition-all duration-300',
-      isLoginRoute ? 'ml-0' : (collapsed ? 'ml-16' : 'ml-64')
+      isEdgeToEdge ? 'ml-0' : (collapsed ? 'ml-16' : 'ml-64')
     )}>
       {children}
     </main>
