@@ -108,7 +108,9 @@ export default function DashboardPage() {
         setKpisData(mappedKPIs);
         setCsfsData(mappedCSFs);
 
-        const revenueKpi = kpisRows?.find((kpi) => kpi?.name === 'Doanh thu');
+        const revenueKpi = kpisRows?.find((kpi: { id?: string; name?: string } | null) =>
+          kpi?.name === 'Doanh thu'
+        );
         if (revenueKpi?.id) {
           const kpiWithHistory = await getKPIWithHistory(supabase, revenueKpi.id);
           if (isMounted) {

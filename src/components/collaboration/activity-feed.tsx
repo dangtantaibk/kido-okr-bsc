@@ -7,12 +7,19 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { useWorkPackageActivities } from '@/hooks/use-activities';
-import type { OpenProjectActivity } from '@/types/openproject';
 import { cn } from '@/lib/utils';
 
 interface ActivityFeedProps {
   workPackageId: number;
 }
+
+type ActivitySummary = {
+  id: number;
+  comment?: { raw: string; html: string };
+  details: Array<{ html: string }>;
+  createdAt: string;
+  _embedded?: { user?: { name: string } };
+};
 
 function getInitials(name: string): string {
   return name
@@ -23,7 +30,7 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function ActivityItem({ activity }: { activity: OpenProjectActivity }) {
+function ActivityItem({ activity }: { activity: ActivitySummary }) {
   const user = activity._embedded?.user;
   const hasComment = activity.comment?.raw && activity.comment.raw.trim().length > 0;
   const hasDetails = activity.details && activity.details.length > 0;

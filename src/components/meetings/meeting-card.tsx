@@ -5,11 +5,18 @@ import { vi } from 'date-fns/locale';
 import { Calendar, Clock, MapPin, Users, Video, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { OpenProjectMeeting } from '@/types/openproject';
 import { cn } from '@/lib/utils';
 
 interface MeetingCardProps {
-  meeting: OpenProjectMeeting;
+  meeting: {
+    id: number;
+    title: string;
+    startTime: string;
+    duration: string;
+    location?: string;
+    state: string;
+    _embedded?: { author?: { name: string } };
+  };
   onClick?: () => void;
 }
 

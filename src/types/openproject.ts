@@ -61,6 +61,15 @@ export interface OpenProjectUser {
   };
 }
 
+export interface OpenProjectUserSimple {
+  id: number;
+  name: string;
+  login: string;
+  _links: OpenProjectLinks & {
+    self: OpenProjectLink;
+  };
+}
+
 export interface OpenProjectUserCollection {
   _type: 'Collection';
   total: number;
@@ -411,4 +420,3 @@ export function getGroupKeyFromWorkPackage(
       return 'unknown';
   }
 }
-

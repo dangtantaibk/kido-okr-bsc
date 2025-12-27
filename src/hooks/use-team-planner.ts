@@ -126,9 +126,11 @@ export function useTeamPlanner(projectId: number) {
 
     if (!targetType?.startsWith('user-')) return;
 
-    let newStartDate = task.startDate;
-    let newDueDate = task.dueDate;
-    let newUserId = undefined;
+    const originalStartDate = task.startDate ?? undefined;
+    const originalDueDate = task.dueDate ?? undefined;
+    let newStartDate: string | undefined = originalStartDate;
+    let newDueDate: string | undefined = originalDueDate;
+    let newUserId: number | undefined = undefined;
 
     // --- SCENARIO 1: Drop on Sidebar (Reassign Only) ---
     if (targetType === 'user-sidebar') {
@@ -161,9 +163,11 @@ export function useTeamPlanner(projectId: number) {
         const shiftDays = Math.round(deltaX / (rowRect.width / days));
         if (shiftDays !== 0) {
           const oldStart = new Date(task.startDate);
-          const oldDue = new Date(task.dueDate);
           newStartDate = addDays(oldStart, shiftDays).toISOString().split('T')[0];
-          newDueDate = addDays(oldDue, shiftDays).toISOString().split('T')[0];
+          if (task.dueDate) {
+            const oldDue = new Date(task.dueDate);
+            newDueDate = addDays(oldDue, shiftDays).toISOString().split('T')[0];
+          }
         }
       } else {
         // BACKLOG -> GRID (Calculate Date from Drop Position)
@@ -193,7 +197,8 @@ export function useTeamPlanner(projectId: number) {
 
     // Execute Mutation if changed
     const hasUserChange = newUserId !== undefined;
-    const hasDateChange = newStartDate !== task.startDate;
+    const hasDateChange =
+      newStartDate !== originalStartDate || newDueDate !== originalDueDate;
 
     if (hasUserChange || hasDateChange) {
       updateMutation.mutate({

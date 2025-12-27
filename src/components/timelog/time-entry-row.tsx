@@ -3,12 +3,23 @@
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Clock, User, FileText } from 'lucide-react';
-import type { OpenProjectTimeEntry } from '@/types/openproject';
 import { parseDurationToHours } from '@/hooks/use-time-entries';
 import { cn } from '@/lib/utils';
 
+type TimeEntrySummary = {
+  id: number;
+  hours: string;
+  spentOn: string;
+  comment?: { raw: string };
+  _embedded?: {
+    user?: { name: string };
+    workPackage?: { id: number; subject: string };
+    activity?: { name: string };
+  };
+};
+
 interface TimeEntryRowProps {
-  entry: OpenProjectTimeEntry;
+  entry: TimeEntrySummary;
 }
 
 export function TimeEntryRow({ entry }: TimeEntryRowProps) {

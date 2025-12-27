@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Send, Loader2 } from 'lucide-react';
 import { useSearchUsers } from '@/hooks/use-users';
 import { useAddComment } from '@/hooks/use-activities';
-import type { OpenProjectUser } from '@/types/openproject';
 import { cn } from '@/lib/utils';
 
 interface CommentEditorProps {
@@ -17,13 +16,18 @@ interface CommentEditorProps {
   onCommentAdded?: () => void;
 }
 
+type MentionUser = {
+  id: number;
+  name: string;
+};
+
 // Suggestion dropdown component
 function MentionList({
   items,
   command,
   selectedIndex,
 }: {
-  items: OpenProjectUser[];
+  items: MentionUser[];
   command: (item: { id: string; label: string }) => void;
   selectedIndex: number;
 }) {

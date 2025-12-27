@@ -56,6 +56,7 @@ import {
   priorityColors,
   priorityLabels,
   CSFStatus,
+  perspectiveLabels,
   statusColors,
   statusLabels,
 } from '@/data/mock-data';
