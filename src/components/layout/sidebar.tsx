@@ -17,6 +17,10 @@ import {
   CalendarCheck,
   ChevronDown,
   Map,
+  CalendarRange,
+  Calendar,
+  FileText,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -45,7 +49,6 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Tổng Công ty', href: '/ogsm', icon: Building2 },
       { name: 'Cấp Phòng ban', href: '/ogsm/department', icon: Users2 },
-      // { name: 'Visual Map', href: '/strategy-map', icon: Map },
     ],
   },
   {
@@ -57,10 +60,20 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Thực thi',
+    title: 'OpenProject',
+    items: [
+      { name: 'Boards', href: '/boards', icon: ClipboardList },
+      { name: 'Timeline', href: '/kanban', icon: CalendarRange },
+      { name: 'Meetings', href: '/meetings', icon: Calendar },
+      { name: 'Wiki', href: '/wiki', icon: FileText },
+      { name: 'Time Log', href: '/timelog', icon: Clock },
+    ],
+  },
+  {
+    title: 'Khác',
     items: [
       { name: 'Fishbone', href: '/fishbone', icon: GitBranch },
-      { name: 'Action Log', href: '/actions', icon: ClipboardList },
+      { name: 'Projects', href: '/projects', icon: GitBranch },
       { name: 'Reviews', href: '/reviews', icon: CalendarCheck },
     ],
   },

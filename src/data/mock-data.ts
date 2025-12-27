@@ -24,6 +24,11 @@ export interface OKR {
   owner: string;
   dueDate: string;
   linkedGoalId?: string;
+  linkedGoalName?: string;
+  linkedObjectiveName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  sortOrder?: number;
 }
 
 export interface KPI {

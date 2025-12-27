@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS okr_okrs (
   quarter TEXT NOT NULL,
   status okr_status_type DEFAULT 'on_track',
   progress NUMERIC DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,
   owner_id UUID REFERENCES okr_users(id),
   department_id UUID REFERENCES okr_departments(id),
   linked_goal_id UUID REFERENCES okr_goals(id),
@@ -208,6 +209,9 @@ CREATE TABLE IF NOT EXISTS okr_okrs (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE okr_okrs
+  ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS okr_key_results (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

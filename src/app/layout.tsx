@@ -7,6 +7,7 @@ import { SidebarProvider } from '@/contexts/sidebar-context';
 import { OrganizationProvider } from '@/contexts/organization-context';
 import { AuthProvider } from '@/contexts/auth-context';
 import { AuthGuard } from '@/components/auth/auth-guard';
+import { QueryProvider } from '@/lib/openproject/query-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -31,18 +32,20 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <SidebarProvider>
-          <AuthProvider>
-            <OrganizationProvider>
-              <div className="flex min-h-screen bg-slate-50">
-                <Sidebar />
-                <MainContent>
-                  <AuthGuard>{children}</AuthGuard>
-                </MainContent>
-              </div>
-            </OrganizationProvider>
-          </AuthProvider>
-        </SidebarProvider>
+        <QueryProvider>
+          <SidebarProvider>
+            <AuthProvider>
+              <OrganizationProvider>
+                <div className="flex min-h-screen bg-slate-50">
+                  <Sidebar />
+                  <MainContent>
+                    <AuthGuard>{children}</AuthGuard>
+                  </MainContent>
+                </div>
+              </OrganizationProvider>
+            </AuthProvider>
+          </SidebarProvider>
+        </QueryProvider>
       </body>
     </html>
   );

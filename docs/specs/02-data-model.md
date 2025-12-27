@@ -118,6 +118,7 @@ export interface User extends BaseEntity {
   fullName: string;
   role: string; // CEO, CFO, CMO, Director, Manager, Staff
   avatarUrl?: string;
+  openprojectUserId?: number; // Link to OpenProject User ID
   
   // Relations (populated)
   organization?: Organization;
@@ -136,6 +137,28 @@ export interface Department extends BaseEntity {
   parent?: Department;
   children?: Department[];
   head?: User;
+}
+
+// src/types/integration.ts
+export interface OpenProjectProject {
+  id: number;
+  identifier: string; // e.g. 'demo-project'
+  name: string;
+  description: { raw: string; html: string };
+  // ... other OP fields
+}
+
+export interface OpenProjectWorkPackage {
+  id: number;
+  subject: string;
+  startDate: string;
+  dueDate: string;
+  percentageDone: number;
+  _links: {
+    status: { href: string; title: string };
+    priority: { href: string; title: string };
+    assignee: { href: string; title: string };
+  };
 }
 ```
 
@@ -186,6 +209,7 @@ export interface Strategy extends BaseEntity {
   name: string;
   description?: string;
   priority: number;
+  openprojectProjectId?: string; // Link to OpenProject Project ID (e.g. "15", "demo-project")
   
   // Relations (populated)
   goal?: Goal;
