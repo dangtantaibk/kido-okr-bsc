@@ -5,11 +5,11 @@ export const getKPIWithHistory = async (
   supabase: SupabaseClient<Database>,
   kpiId: string
 ) => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from('okr_kpis')
     .select(`*, history:okr_kpi_history(*)`)
     .eq('id', kpiId)
-    .single();
+    .single() as any);
 
   if (error) {
     throw error;
@@ -47,7 +47,7 @@ export const getKPIsByOrg = async (
     query = query.eq('status', status);
   }
 
-  const { data, error } = await query.order('name');
+  const { data, error } = await (query.order('name') as any);
 
   if (error) {
     throw error;

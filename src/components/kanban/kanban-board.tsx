@@ -11,11 +11,18 @@ import {
   getWorkPackages,
   updateWorkPackageStatus,
 } from '@/lib/openproject/actions';
-import type { OpenProjectStatus, OpenProjectWorkPackage, KanbanColumn as KanbanColumnType } from '@/types/openproject';
+import type { OpenProjectStatus, OpenProjectWorkPackage } from '@/types/openproject';
 
 interface KanbanBoardProps {
   projectId?: number;
 }
+
+type KanbanColumnType = {
+  id: number;
+  name: string;
+  color: string;
+  workPackages: OpenProjectWorkPackage[];
+};
 
 interface ToastNotification {
   id: string;

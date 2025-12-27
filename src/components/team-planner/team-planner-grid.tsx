@@ -56,7 +56,6 @@ export function TeamPlannerGrid({ users, workPackages, startDate, days = 7 }: Te
               tasks={userTasks}
               startDate={startDate}
               days={days}
-              dayWidth={0} // Not used for now as we use Grid
             />
           );
         })}

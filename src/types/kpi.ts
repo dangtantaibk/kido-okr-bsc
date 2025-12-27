@@ -45,6 +45,6 @@ export interface KPIHistory extends BaseEntity {
 /**
  * Helper type for charting data.
  */
-export interface KPIWithHistory extends KPI {
+export interface KPIWithHistory extends Omit<KPI, 'history'> {
   history: { month: string; value: number }[];
 }
