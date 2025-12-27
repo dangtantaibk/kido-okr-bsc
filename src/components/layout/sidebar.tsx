@@ -89,8 +89,9 @@ export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, toggleCollapsed } = useSidebar();
   const isLoginRoute = pathname === '/login';
+  const isFullScreenRoute = pathname.startsWith('/projects');
 
-  if (isLoginRoute) {
+  if (isLoginRoute || isFullScreenRoute) {
     return null;
   }
 
