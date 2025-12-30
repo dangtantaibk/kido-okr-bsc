@@ -13,14 +13,7 @@ import {
   Building2,
   Users2,
   GitBranch,
-  ClipboardList,
   CalendarCheck,
-  ChevronDown,
-  Map,
-  CalendarRange,
-  Calendar,
-  FileText,
-  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -62,18 +55,13 @@ const navigationGroups: NavGroup[] = [
   {
     title: 'OpenProject',
     items: [
-      { name: 'Boards', href: '/boards', icon: ClipboardList },
-      { name: 'Timeline', href: '/kanban', icon: CalendarRange },
-      { name: 'Meetings', href: '/meetings', icon: Calendar },
-      { name: 'Wiki', href: '/wiki', icon: FileText },
-      { name: 'Time Log', href: '/timelog', icon: Clock },
+      { name: 'Project', href: '/projects', icon: GitBranch },
     ],
   },
   {
     title: 'Khác',
     items: [
       { name: 'Fishbone', href: '/fishbone', icon: GitBranch },
-      { name: 'Projects', href: '/projects', icon: GitBranch },
       { name: 'Reviews', href: '/reviews', icon: CalendarCheck },
     ],
   },
