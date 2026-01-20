@@ -1,0 +1,14 @@
+.next
+node_modules
+.git
+.gitignore
+.DS_Store
+*.log
+*.tsbuildinfo
+.env*
+coverage
+dist
+deploy
+docs
+supabase
+README.md

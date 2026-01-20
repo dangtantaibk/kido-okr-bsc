@@ -1,0 +1,90 @@
+Section;Group;Code;Muc_dich;Muc_tieu;Cach_lam;Do_luong;Owner;Nguon_luc;Start;End
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > I. DOANH THU HIỆN TẠI;F1.1;Tăng doanh thu kênh GT;Tăng 12% doanh thu GT;Mở rộng điểm bán và chăm sóc NPP;Doanh thu GT;Sales GT;Trade budget 20 tỷ;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > I. DOANH THU HIỆN TẠI;F1.2;Tăng doanh thu kênh MT;Tăng 10% doanh thu MT;Đàm phán key account và planogram;Doanh thu MT;Sales MT;Listing budget 15 tỷ;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > I. DOANH THU HIỆN TẠI;F1.3;Tăng doanh thu online;Tăng 30% GMV online;Tối ưu SEO ads và CRM;GMV online;E-commerce;Digital budget 8 tỷ;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > I. DOANH THU HIỆN TẠI;F1.4;Tăng doanh thu miền Bắc;Tăng 15% doanh thu miền Bắc;Mở thêm NPP và đội sales khu vực;Doanh thu miền Bắc;Regional Sales;Tuyển dụng 30 sales;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > I. DOANH THU HIỆN TẠI;F1.5;Đẩy doanh thu sản phẩm chủ lực;Tăng 18% doanh thu 3 SKU core;Trưng bày và promo trọng điểm;Sell-out SKU core;Trade Marketing;POSM và sampling;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > I. DOANH THU HIỆN TẠI;F1.6;Tăng giá trị đơn hàng;Tăng 8% AOV;Bundle và cross-sell;AOV;CRM/Brand;Ưu đãi bundle;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > II. DOANH THU CƠ HỘI MỚI;F2.1;Mở rộng doanh thu từ sản phẩm mới;Ra mắt 5 sản phẩm mới;NPD pipeline và test market;Số sản phẩm mới;R&D/Marketing;Ngân sách R&D 12 tỷ;2026-03-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > II. DOANH THU CƠ HỘI MỚI;F2.2;Tăng doanh thu xuất khẩu;Doanh thu xuất khẩu 200 tỷ;Chọn 3 thị trường ưu tiên;Doanh thu xuất khẩu;Export;Pháp lý và distributor;2026-03-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > II. DOANH THU CƠ HỘI MỚI;F2.3;Doanh thu từ hợp tác OEM;Ký 2 hợp đồng OEM;Đàm phán đối tác quốc tế;Số hợp đồng OEM;BD;Pháp lý và QA;2026-04-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > II. DOANH THU CƠ HỘI MỚI;F2.4;Doanh thu kênh HoReCa;Tăng 20% doanh thu HoReCa;Phát triển menu và bundle;Doanh thu HoReCa;Key Account;Đội sales horeca;2026-02-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > II. DOANH THU CƠ HỘI MỚI;F2.5;Doanh thu từ M&A;Hoàn tất 1 thương vụ M&A;Sàng lọc mục tiêu và DD;Thương vụ hoàn tất;Corporate Dev;Tư vấn tài chính;2026-05-01;2026-12-31
+F. TẦNG TÀI CHÍNH;A. CHIẾN LƯỢC TĂNG TRƯỞNG > II. DOANH THU CƠ HỘI MỚI;F2.6;Doanh thu dịch vụ giá trị gia tăng;20 tỷ từ subscription;Thiết kế gói dịch vụ;Doanh thu dịch vụ;New Business;Product team;2026-06-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > III. TỐI ƯU TÀI SẢN;F3.1;Tăng vòng quay tồn kho;Vòng quay >= 9;S&OP và phân loại tồn;Inventory turns;Supply Chain;Hệ thống S&OP;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > III. TỐI ƯU TÀI SẢN;F3.2;Giảm ngày phải thu;DSO <= 45 ngày;Chính sách tín dụng và thu hồi;DSO;Finance;Công cụ AR;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > III. TỐI ƯU TÀI SẢN;F3.3;Tăng công suất nhà máy;Utilization >= 85%;Lịch sản xuất tối ưu;Capacity utilization;Operations;MES/ERP;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > III. TỐI ƯU TÀI SẢN;F3.4;Tối ưu CAPEX;Giảm 10% CAPEX/đơn vị;Rà soát dự án đầu tư;CAPEX/đơn vị;PMO;Chuẩn hóa ROI;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > III. TỐI ƯU TÀI SẢN;F3.5;Tái cấu trúc tài sản;Thanh lý tài sản dư thừa 30 tỷ;Kiểm kê và đấu giá;Giá trị thanh lý;Finance/SCM;Định giá tài sản;2026-02-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > III. TỐI ƯU TÀI SẢN;F3.6;Tối ưu đội xe logistics;Tăng 15% hiệu suất xe;Tối ưu tuyến và lịch giao;Km/xe/ngày;Logistics;TMS;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > IV. TỐI ƯU CHI PHÍ;F4.1;Giảm chi phí nguyên liệu;Giảm 3% COGS;Đấu thầu và chuẩn hóa NCC;COGS%;Procurement;Đàm phán NCC;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > IV. TỐI ƯU CHI PHÍ;F4.2;Giảm chi phí logistics;Giảm 8% chi phí vận chuyển;Tối ưu tải và hợp đồng 3PL;Cost/km;Logistics;3PL contract;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > IV. TỐI ƯU CHI PHÍ;F4.3;Giảm chi phí năng lượng;Giảm 10% điện/đơn vị;Energy audit và retrofit;kWh/đơn vị;Plant Manager;CAPEX tiết kiệm năng lượng;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > IV. TỐI ƯU CHI PHÍ;F4.4;Tối ưu chi phí marketing;Giảm 5% CPA;Tối ưu kênh performance;CPA;Marketing;Martech tools;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > IV. TỐI ƯU CHI PHÍ;F4.5;Tối ưu chi phí nhân sự;Giảm 5% chi phí gián tiếp;Tái cấu trúc chức năng;SGA/Doanh thu;HR;Change management;2026-01-01;2026-12-31
+F. TẦNG TÀI CHÍNH;B. CHIẾN LƯỢC LỢI NHUẬN > IV. TỐI ƯU CHI PHÍ;F4.6;Chuẩn hóa mua hàng;Giảm 15% biến động giá mua;Khung giá và hợp đồng dài hạn;Price variance;Procurement;Master contract;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.1 PORFOLIO F1;C1.1F1;Giữ thị phần core;Market share >= 45%;Tăng độ phủ và trưng bày;Market share core;Brand/Sales;Trade budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.1 PORFOLIO F1;C1.2F1;Tăng NPS core;NPS >= 70;Cải tiến dịch vụ CSKH;NPS;Customer Service;CRM;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.1 PORFOLIO F1;C1.3F1;Tăng tần suất mua lại;Repeat rate +10%;Loyalty program;Repeat rate;CRM;Loyalty budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.1 PORFOLIO F1;C1.4F1;Tăng độ phủ điểm bán;Numeric distribution 95%;Mở điểm bán;Numeric distribution;Sales;NPP support;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.1 PORFOLIO F1;C1.5F1;Tối ưu giá trị cho khách hàng;Price acceptance >= 80%;Giá trị gói và khảo sát;Price acceptance survey;Brand;Research budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.1 PORFOLIO F1;C1.6F1;Nâng chất lượng trải nghiệm;CSAT >= 92%;Kiểm soát chất lượng dịch vụ;CSAT;Customer Service;QA training;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.2 PORFOLIO F2;C1.1F2;Ra mắt portfolio mới;2 line mới đạt 50 tỷ;Launch plan và sampling;Doanh thu portfolio mới;Marketing/R&D;Launch budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.2 PORFOLIO F2;C1.2F2;Tăng tỷ lệ thử;Trial rate 25%;Sampling và activation;Trial rate;Marketing;Activation budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.2 PORFOLIO F2;C1.3F2;Tăng độ nhận biết;Awareness 60%;Digital và PR;Awareness;Marketing;Media budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.2 PORFOLIO F2;C1.4F2;Tối ưu công thức;Taste score >= 4.3;R&D testing;Taste score;R&D;Lab budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.2 PORFOLIO F2;C1.5F2;Mở rộng phân phối;Distribution 70%;NPP onboarding;Weighted distribution;Sales;Channel support;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;I.2 PORFOLIO F2;C1.6F2;Tăng tốc doanh thu;Run-rate 10 tỷ/tháng;Promo launch waves;Run-rate;Sales/Marketing;Promo budget;2026-04-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.1 KÊNH F1;C2.1F1;Tăng độ phủ GT;Coverage GT 95%;Mở 3000 điểm bán;Coverage GT;Sales GT;NPP budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.1 KÊNH F1;C2.2F1;Tăng share of shelf MT;Share of shelf 30%;Planogram và listing;Share of shelf;Sales MT;Listing budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.1 KÊNH F1;C2.3F1;Tối ưu e-commerce core;CR >= 3.5%;Tối ưu PDP và ads;Conversion rate;E-commerce;Performance budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.1 KÊNH F1;C2.4F1;Tăng doanh thu B2B;B2B 120 tỷ;Chính sách sỉ và SLA;Doanh thu B2B;B2B Sales;Key account team;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.1 KÊNH F1;C2.5F1;Giảm OOS;OOS <= 3%;Forecast và replenishment;OOS rate;Supply Chain;Planning tools;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.1 KÊNH F1;C2.6F1;Tăng hiệu quả trưng bày;POSM compliance 90%;Audit trưng bày;POSM compliance;Trade Marketing;Audit team;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.2 KÊNH F2;C2.1F2;Mở kênh export;3 distributor quốc tế;Chọn đối tác và đăng ký sản phẩm;Số distributor;Export;Pháp lý;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.2 KÊNH F2;C2.2F2;Mở kênh O2O;10 cửa hàng O2O;Liên kết delivery platform;Số cửa hàng O2O;New Channel;Partnership budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.2 KÊNH F2;C2.3F2;Phát triển kênh HoReCa mới;500 điểm HoReCa;Menu bundle và training;Số điểm HoReCa;Key Account;Sales team;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.2 KÊNH F2;C2.4F2;Kênh vending;300 máy vending;Hợp tác đối tác vận hành;Số máy vending;Channel Dev;Capex vending;2026-04-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.2 KÊNH F2;C2.5F2;Kênh convenience;Listing 80% chuỗi CVS;Đàm phán chuỗi CVS;Coverage CVS;Sales MT;Listing budget;2026-04-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;II.2 KÊNH F2;C2.6F2;Kênh D2C;50k khách hàng trực tiếp;Membership và app;Số khách D2C;D2C Team;App budget;2026-04-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F1;C3.1F1;Tăng nhận biết thương hiệu core;Awareness 85%;Always-on media;Brand awareness;Marketing;Media budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F1;C3.2F1;Tăng SOV;SOV >= 25%;Media mix;Share of voice;Marketing;Media budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F1;C3.3F1;Tối ưu hiệu quả khuyến mãi;ROI promo >= 1.8;AB test và tối ưu khuyến mãi;Promo ROI;Trade Marketing;Promo budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F1;C3.4F1;Cải thiện loyalty;Active members 200k;CRM campaign;Active members;CRM;Loyalty budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F1;C3.5F1;Tăng trial tại điểm bán;Sampling 1M người;Sampling roadshow;Sampling count;Trade Marketing;Activation budget;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F1;C3.6F1;Chuẩn hóa brand guideline;100% POSM chuẩn;Audit POSM;Brand compliance;Brand Team;Audit team;2026-01-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F2;C3.1F2;Launch brand mới;Awareness 60%;Launch campaign 360;Awareness;Marketing;Launch budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F2;C3.2F2;Influencer seeding;500 KOL/KOC mentions;Seeding plan;Mentions;Marketing;KOL budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F2;C3.3F2;Performance marketing;CPA <= 35k;Optimize ads;CPA;Performance Team;Ads budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F2;C3.4F2;PR sản phẩm mới;30 bài PR;PR partnerships;PR count;PR Team;PR budget;2026-03-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F2;C3.5F2;NPS sản phẩm mới;NPS >= 60;Collect feedback;NPS;Customer Insight;Research budget;2026-04-01;2026-12-31
+C. TẦNG KHÁCH HÀNG;III.1 MARKETING F2;C3.6F2;Trial rate sản phẩm mới;Trial 25%;Sampling và coupon;Trial rate;Marketing;Activation budget;2026-04-01;2026-12-31
+P. TẦNG VẬN HÀNH;I. F1;P1.1.1F;Tăng độ chính xác forecast;Forecast accuracy 85%;S&OP weekly;Forecast accuracy;Demand Planning;S&OP tool;2026-01-01;2026-12-31
+P. TẦNG VẬN HÀNH;I. F1;P1.2.1F;Tăng OEE;OEE 85%;TPM và maintenance;OEE;Production;Maintenance budget;2026-01-01;2026-12-31
+P. TẦNG VẬN HÀNH;I. F1;P1.3.1F;Giảm lỗi chất lượng;Defect rate <1%;QC gate;Defect rate;Quality;QA tools;2026-01-01;2026-12-31
+P. TẦNG VẬN HÀNH;I. F1;P1.4.1F;Tăng OTIF;OTIF 98%;Optimize routing;OTIF;Logistics;TMS;2026-01-01;2026-12-31
+P. TẦNG VẬN HÀNH;I. F1;P1.5.1F;Tối ưu tồn kho;DOS 30 ngày;ABC inventory;Days of stock;Supply Chain;Inventory policy;2026-01-01;2026-12-31
+P. TẦNG VẬN HÀNH;I. F1;P1.6.1F;Cold chain ổn định;Nhiệt độ sai lệch <2%;IoT sensors;Temp deviation;Logistics;IoT sensors;2026-01-01;2026-12-31
+P. TẦNG VẬN HÀNH;II. F2;P2.1.2F;Năng lực NPD;Time-to-market 4 tháng;Stage-gate;TTM;R&D;Project tools;2026-03-01;2026-12-31
+P. TẦNG VẬN HÀNH;II. F2;P2.2.2F;Linh hoạt sản xuất;SMED giảm 20%;Lean changeover;Changeover time;Operations;Lean training;2026-03-01;2026-12-31
+P. TẦNG VẬN HÀNH;II. F2;P2.3.2F;Onboarding NCC mới;5 NCC đạt chuẩn;Audit NCC;Số NCC đạt chuẩn;Procurement;Audit budget;2026-03-01;2026-12-31
+P. TẦNG VẬN HÀNH;II. F2;P2.4.2F;Tuân thủ pháp lý thị trường mới;100% hồ sơ hợp lệ;Regulatory checklist;Compliance rate;Regulatory;Legal support;2026-03-01;2026-12-31
+P. TẦNG VẬN HÀNH;II. F2;P2.5.2F;Pilot plant;2 pilot line vận hành;Đầu tư pilot line;Số line pilot;Operations;Capex pilot;2026-04-01;2026-12-31
+L. PHÁT TRIỂN;I.1 NĂNG LỰC CÁ NHÂN;L1.1;Nâng năng lực lãnh đạo;100% quản lý hoàn thành khóa;Leadership academy;% quản lý hoàn thành;HR;Training budget;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;I.1 NĂNG LỰC CÁ NHÂN;L1.2;Năng lực bán hàng;Tăng 10% win-rate;Sales coaching;Win-rate;Sales Academy;Training budget;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;I.1 NĂNG LỰC CÁ NHÂN;L1.3;Kỹ năng số;70% nhân viên đạt chứng chỉ;Digital training;% chứng chỉ;HR/IT;Learning platform;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;I.1 NĂNG LỰC CÁ NHÂN;L1.4;Năng lực R&D;20 sáng kiến/năm;Innovation lab;Số sáng kiến;R&D;Lab budget;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;I.1 NĂNG LỰC CÁ NHÂN;L1.5;Năng lực CSKH;CSAT team 92%;Service training;CSAT;Customer Service;Training budget;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;I.1 NĂNG LỰC CÁ NHÂN;L1.6;An toàn lao động;0 tai nạn nghiêm trọng;HSE program;Incident rate;HSE;Safety budget;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;II.2 SỐ LIỆU IT;L2.1;Data platform;Data lake go-live;Xây dựng nền tảng dữ liệu;Go-live status;IT Data;Cloud budget;2026-02-01;2026-12-31
+L. PHÁT TRIỂN;II.2 SỐ LIỆU IT;L2.2;BI dashboard;100% phòng ban có dashboard;Self-service BI;% phòng ban;IT/BI;BI tools;2026-02-01;2026-12-31
+L. PHÁT TRIỂN;II.2 SỐ LIỆU IT;L2.3;Master data;Độ chính xác MDM 98%;Chuẩn hóa MDM;MDM accuracy;IT Data;MDM tools;2026-02-01;2026-12-31
+L. PHÁT TRIỂN;II.2 SỐ LIỆU IT;L2.4;Cybersecurity;Tuân thủ ISO27001;Security audit;Audit pass;IT Security;Security budget;2026-02-01;2026-12-31
+L. PHÁT TRIỂN;II.2 SỐ LIỆU IT;L2.5;ERP nâng cấp;Hoàn tất ERP phase 2;Rollout ERP;ERP progress;IT/Operations;ERP budget;2026-02-01;2026-12-31
+L. PHÁT TRIỂN;II.2 SỐ LIỆU IT;L2.6;Tự động hóa RPA;20 quy trình tự động;RPA backlog;Số quy trình;IT Automation;RPA budget;2026-03-01;2026-12-31
+L. PHÁT TRIỂN;III.1 NĂNG LỰC QUẢN TRỊ TỔ CHỨC;L3.1;Kỷ luật KPI;100% phòng ban cập nhật KPI tháng;Review cadence;% cập nhật;PMO;Reporting tools;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;III.1 NĂNG LỰC QUẢN TRỊ TỔ CHỨC;L3.2;Quản trị OKR;90% OKR đúng tiến độ;OKR check-in;% OKR on-track;PMO;OKR system;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;III.1 NĂNG LỰC QUẢN TRỊ TỔ CHỨC;L3.3;Quản trị thay đổi;80% dự án change đạt mục tiêu;Change toolkit;Success rate;Change Office;Change budget;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;III.1 NĂNG LỰC QUẢN TRỊ TỔ CHỨC;L3.4;Văn hóa hợp tác;eNPS 50;Engagement program;eNPS;HR;Engagement budget;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;III.1 NĂNG LỰC QUẢN TRỊ TỔ CHỨC;L3.5;Pipeline nhân sự;Succession cho 80% vị trí;Talent review;Succession coverage;HR;Talent program;2026-01-01;2026-12-31
+L. PHÁT TRIỂN;III.1 NĂNG LỰC QUẢN TRỊ TỔ CHỨC;L3.6;Quản trị rủi ro;100% rủi ro trọng yếu có plan;ERM framework;% risk plans;Risk Office;Risk tools;2026-01-01;2026-12-31
