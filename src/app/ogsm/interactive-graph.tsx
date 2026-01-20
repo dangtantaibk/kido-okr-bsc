@@ -801,8 +801,18 @@ export function InteractiveGraph({
     (mode: GraphViewMode) => {
       setViewMode(mode);
       setHiddenNodeIds(getHiddenNodeIdsByMode(mode));
+      
+      // Trigger fitView after a short delay to ensure nodes are rendered
+      setTimeout(() => {
+        if (flowInstance) {
+          const fitOptions = mode === 'overview'
+            ? { padding: 0.15, minZoom: 0.45, maxZoom: 1.2, duration: 400 }
+            : { padding: 0.2, minZoom: 0.3, maxZoom: 1.2, duration: 400 };
+          flowInstance.fitView(fitOptions);
+        }
+      }, 50);
     },
-    [getHiddenNodeIdsByMode]
+    [getHiddenNodeIdsByMode, flowInstance]
   );
 
   useEffect(() => {
@@ -850,6 +860,8 @@ export function InteractiveGraph({
       !hiddenNodeIds.has(e.source) && !hiddenNodeIds.has(e.target)
     );
 
+    console.log('[Graph Debug] viewMode:', viewMode, 'hiddenNodeIds:', hiddenNodeIds.size, 'visibleNodes:', visibleNodes.length, 'totalNodes:', initialNodes.length);
+
     // Update state props
     const nodesWithState = visibleNodes.map(n => {
       const directChildren = initialEdges.filter(e => e.source === n.id).map(e => e.target);
@@ -878,7 +890,7 @@ export function InteractiveGraph({
 
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [hiddenNodeIds, initialNodes, initialEdges, toggleNode, setNodes, setEdges, layoutDirection]);
+  }, [hiddenNodeIds, initialNodes, initialEdges, toggleNode, setNodes, setEdges, layoutDirection, viewMode]);
 
   useEffect(() => {
     if (!flowInstance) {
