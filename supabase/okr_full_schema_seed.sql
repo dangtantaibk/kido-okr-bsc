@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS okr_objectives (
   perspective okr_perspective_type NOT NULL,
   cluster_code TEXT,
   cluster_group TEXT,
+  linked_cluster_code TEXT,
   purpose TEXT,
   objective_text TEXT,
   owner_id UUID REFERENCES okr_users(id),
@@ -116,6 +117,7 @@ CREATE TABLE IF NOT EXISTS okr_objectives (
 
 ALTER TABLE okr_objectives ADD COLUMN IF NOT EXISTS cluster_code TEXT;
 ALTER TABLE okr_objectives ADD COLUMN IF NOT EXISTS cluster_group TEXT;
+ALTER TABLE okr_objectives ADD COLUMN IF NOT EXISTS linked_cluster_code TEXT;
 ALTER TABLE okr_objectives ADD COLUMN IF NOT EXISTS purpose TEXT;
 ALTER TABLE okr_objectives ADD COLUMN IF NOT EXISTS objective_text TEXT;
 ALTER TABLE okr_objectives ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES okr_users(id);

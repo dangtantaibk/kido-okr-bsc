@@ -684,6 +684,7 @@ export interface OGSMObjective {
   perspective: Perspective;
   clusterCode?: string;
   clusterGroup?: string;
+  linkedClusterCode?: string;
   purpose?: string;
   objectiveText?: string;
   ownerId?: string;

@@ -46,10 +46,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getObjectivesWithCascade } from '@/lib/supabase/queries/ogsm';
 import { useOrganization } from '@/contexts/organization-context';
+import { InteractiveGraph } from './interactive-graph';
 
 const goalIcons: Record<string, React.ElementType> = {
   'goal-1': TrendingUp,
@@ -90,7 +91,18 @@ const formatOwnerLabel = (owner?: { full_name?: string | null; email?: string | 
   return role ? `${name} (${role})` : name;
 };
 
-import { InteractiveGraph } from './interactive-graph';
+const formatDateLabel = (value?: string | null) => {
+  if (!value) {
+    return '—';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+
+  return parsed.toLocaleDateString('vi-VN');
+};
 
 // --- Sub-components ---
 type StrategyMeasure = {
@@ -103,6 +115,30 @@ type OGSMStrategyRecord = {
   goalId: string;
   name: string;
   measures: StrategyMeasure[];
+};
+
+type StrategyTableRow = {
+  objective: OGSMObjective;
+  objectiveLabel: string;
+  objectiveGroupKey: string;
+  objectiveLinkedCodes?: string[];
+  goal?: OGSMGoal;
+  strategy?: OGSMStrategyRecord;
+  measure?: StrategyMeasure;
+  objectiveRowSpan: number;
+  goalRowSpan: number;
+  strategyRowSpan: number;
+};
+
+type ObjectiveGroup = {
+  id: string;
+  label: string;
+  perspective: Perspective;
+  objectiveIds: string[];
+  clusterCodes: string[];
+  linkedCodes: string[];
+  linkedLabels: string[];
+  primaryObjective: OGSMObjective;
 };
 
 type DialogType = 'objective' | 'goal' | 'strategy' | 'measure';
@@ -313,7 +349,7 @@ const GoalItem = ({
 };
 
 export default function OGSMCompanyPage() {
-  const [activeTab, setActiveTab] = useState<'list' | 'graph'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'graph' | 'table'>('list');
   const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
   const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
   const [ogsmStrategies, setOgsmStrategies] = useState<OGSMStrategyRecord[]>([]);
@@ -346,6 +382,14 @@ export default function OGSMCompanyPage() {
         name: obj.name || '',
         description: obj.description || '',
         perspective: obj.perspective || 'financial',
+        clusterCode: obj.cluster_code || obj.clusterCode || undefined,
+        clusterGroup: obj.cluster_group || obj.clusterGroup || undefined,
+        linkedClusterCode: obj.linked_cluster_code || obj.linkedClusterCode || undefined,
+        purpose: obj.purpose || obj.description || '',
+        objectiveText: obj.objective_text || obj.objectiveText || obj.name || '',
+        resourceNote: obj.resource_note || obj.resourceNote || undefined,
+        startDate: obj.start_date || obj.startDate || undefined,
+        endDate: obj.end_date || obj.endDate || undefined,
       }));
 
       const goals = (objectiveRows || []).flatMap((obj: any) =>
@@ -372,7 +416,7 @@ export default function OGSMCompanyPage() {
             measures: (strategy.measures || [])
               .map((measure: any) => ({
                 id: measure?.id,
-                name: measure?.name || '',
+                name: measure?.name || measure?.kpi?.name || '',
               }))
               .filter((measure: { id?: string }) => Boolean(measure.id)),
           }))
@@ -672,9 +716,169 @@ export default function OGSMCompanyPage() {
     }
   };
 
-  const getGoalsForObjective = (objectiveId: string) => {
-    return ogsmGoals.filter(g => g.objectiveId === objectiveId);
+  const getGoalsForObjectiveIds = (objectiveIds: string[]) => {
+    return ogsmGoals.filter(goal => objectiveIds.includes(goal.objectiveId));
   };
+
+  const objectiveGroups = useMemo<ObjectiveGroup[]>(() => {
+    const groups = new Map<string, {
+      label: string;
+      perspective: Perspective;
+      objectiveIds: string[];
+      clusterCodes: Set<string>;
+      linkedCodes: Set<string>;
+      primaryObjective: OGSMObjective;
+    }>();
+
+    ogsmObjectives.forEach((objective) => {
+      const label = objective.objectiveText ?? objective.name;
+      const key = `${objective.perspective}-${label}`;
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          label,
+          perspective: objective.perspective,
+          objectiveIds: [],
+          clusterCodes: new Set(),
+          linkedCodes: new Set(),
+          primaryObjective: objective,
+        });
+      }
+
+      const group = groups.get(key);
+      if (!group) {
+        return;
+      }
+
+      group.objectiveIds.push(objective.id);
+      if (objective.clusterCode) {
+        group.clusterCodes.add(objective.clusterCode);
+      }
+      if (objective.linkedClusterCode) {
+        group.linkedCodes.add(objective.linkedClusterCode);
+      }
+    });
+
+    return Array.from(groups.entries()).map(([key, group]) => {
+      const linkedLabels = Array.from(
+        new Set(
+          Array.from(group.linkedCodes).map((code) => {
+            const linkedObjective = ogsmObjectives.find(obj => obj.clusterCode?.startsWith(code));
+            return linkedObjective
+              ? `${code} - ${linkedObjective.objectiveText ?? linkedObjective.name}`
+              : code;
+          })
+        )
+      );
+
+      return {
+        id: key,
+        label: group.label,
+        perspective: group.perspective,
+        objectiveIds: group.objectiveIds,
+        clusterCodes: Array.from(group.clusterCodes).sort(),
+        linkedCodes: Array.from(group.linkedCodes).sort(),
+        linkedLabels,
+        primaryObjective: group.primaryObjective,
+      };
+    });
+  }, [ogsmObjectives]);
+
+  const tableRows = useMemo<StrategyTableRow[]>(() => {
+    const rows: StrategyTableRow[] = [];
+
+    ogsmObjectives.forEach((objective) => {
+      const objectiveLabel = objective.objectiveText ?? objective.name;
+      const objectiveGroupKey = `${objective.perspective}-${objectiveLabel}`;
+      const goals = ogsmGoals.filter(g => g.objectiveId === objective.id);
+
+      if (goals.length === 0) {
+        rows.push({
+          objective,
+          objectiveLabel,
+          objectiveGroupKey,
+          objectiveRowSpan: 0,
+          goalRowSpan: 1,
+          strategyRowSpan: 1,
+        });
+        return;
+      }
+
+      const objectiveRows: StrategyTableRow[] = [];
+
+      goals.forEach((goal) => {
+        const strategies = ogsmStrategies.filter(strategy => strategy.goalId === goal.id);
+
+        if (strategies.length === 0) {
+          objectiveRows.push({
+            objective,
+            objectiveLabel,
+            objectiveGroupKey,
+            goal,
+            objectiveRowSpan: 0,
+            goalRowSpan: 1,
+            strategyRowSpan: 1,
+          });
+          return;
+        }
+
+        const goalRows: StrategyTableRow[] = [];
+
+        strategies.forEach((strategy) => {
+          const measures: Array<StrategyMeasure | undefined> =
+            strategy.measures.length > 0 ? strategy.measures : [undefined];
+          const strategyRows = measures.map((measure) => ({
+            objective,
+            objectiveLabel,
+            objectiveGroupKey,
+            goal,
+            strategy,
+            measure,
+            objectiveRowSpan: 0,
+            goalRowSpan: 0,
+            strategyRowSpan: 0,
+          }));
+
+          const strategyRowSpan = strategyRows.length;
+          strategyRows.forEach((row, index) => {
+            row.strategyRowSpan = index === 0 ? strategyRowSpan : 0;
+          });
+
+          goalRows.push(...strategyRows);
+        });
+
+        const goalRowSpan = goalRows.length;
+        goalRows.forEach((row, index) => {
+          row.goalRowSpan = index === 0 ? goalRowSpan : 0;
+        });
+
+        objectiveRows.push(...goalRows);
+      });
+
+      rows.push(...objectiveRows);
+    });
+
+    let index = 0;
+    while (index < rows.length) {
+      const groupKey = rows[index].objectiveGroupKey;
+      const startIndex = index;
+      while (index < rows.length && rows[index].objectiveGroupKey === groupKey) {
+        index += 1;
+      }
+      const groupRows = rows.slice(startIndex, index);
+      const linkedCodes = Array.from(
+        new Set(groupRows.map((row) => row.objective.linkedClusterCode).filter(Boolean))
+      ) as string[];
+      groupRows.forEach((row, rowIndex) => {
+        row.objectiveRowSpan = rowIndex === 0 ? groupRows.length : 0;
+        if (rowIndex === 0) {
+          row.objectiveLinkedCodes = linkedCodes;
+        }
+      });
+    }
+
+    return rows;
+  }, [ogsmObjectives, ogsmGoals, ogsmStrategies]);
 
   const dialogLabels: Record<DialogType, string> = {
     objective: 'Objective',
@@ -728,12 +932,15 @@ export default function OGSMCompanyPage() {
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'list' | 'graph')} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'list' | 'graph' | 'table')} className="w-full">
           <div className="sticky top-16 z-20 bg-slate-50/95 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 -mx-6 px-6 py-2 border-b border-slate-200 mb-6 shadow-sm transition-all">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <TabsList className="bg-white border shadow-sm self-start md:self-auto">
                 <TabsTrigger value="list" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   List View
+                </TabsTrigger>
+                <TabsTrigger value="table" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                  Bảng Excel
                 </TabsTrigger>
                 <TabsTrigger value="graph" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Graph Tree View
@@ -788,13 +995,15 @@ export default function OGSMCompanyPage() {
 
             {/* Objectives Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-              {ogsmObjectives.map((objective) => {
-                const goals = getGoalsForObjective(objective.id);
-                const perspective = objective.perspective;
+              {objectiveGroups.map((group) => {
+                const goals = getGoalsForObjectiveIds(group.objectiveIds);
+                const perspective = group.perspective;
                 const theme = perspective ? getThemeColors(perspective) : null;
+                const clusterLabel = group.clusterCodes.join(', ');
+                const linkedLabel = group.linkedLabels.join(', ');
 
                 return (
-                  <Card key={objective.id} className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow py-0 gap-0 h-full">
+                  <Card key={group.id} className="border-0 shadow-lg overflow-hidden hover:shadow-xl transition-shadow py-0 gap-0 h-full">
                     {/* Objective Header */}
                     <CardHeader className={`${theme ? theme.solidBg : 'bg-slate-500'} text-white pb-5 relative overflow-hidden pt-6 px-6`}>
                       <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
@@ -807,10 +1016,16 @@ export default function OGSMCompanyPage() {
                             <div>
                               <div className="flex items-center gap-2">
                                 <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 text-[10px] px-1.5 py-0 h-5 font-normal">
-                                  {objective.perspective ? perspectiveLabels[objective.perspective] : 'Objective'}
+                                  {group.perspective ? perspectiveLabels[group.perspective] : 'Objective'}
                                 </Badge>
                               </div>
-                              <CardTitle className="text-lg text-white mt-1 leading-snug">{objective.objectiveText ?? objective.name}</CardTitle>
+                              <CardTitle className="text-lg text-white mt-1 leading-snug">{group.label}</CardTitle>
+                              {(clusterLabel || linkedLabel) && (
+                                <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-white/80">
+                                  {clusterLabel && <span>Mã: {clusterLabel}</span>}
+                                  {linkedLabel && <span>Liên kết: {linkedLabel}</span>}
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -819,7 +1034,7 @@ export default function OGSMCompanyPage() {
                               variant="ghost"
                               size="icon-sm"
                               className="text-white/80 hover:text-white hover:bg-white/10"
-                              onClick={() => openEditObjective(objective)}
+                              onClick={() => openEditObjective(group.primaryObjective)}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -828,15 +1043,15 @@ export default function OGSMCompanyPage() {
                               variant="ghost"
                               size="icon-sm"
                               className="text-white/80 hover:text-white hover:bg-white/10"
-                              onClick={() => handleDeleteObjective(objective.id)}
+                              onClick={() => handleDeleteObjective(group.primaryObjective.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
-                        <p className="mt-3 text-sm text-white/80 line-clamp-2">{objective.description ?? objective.purpose}</p>
                       </div>
                     </CardHeader>
+
 
                     <CardContent className="p-0 bg-white">
                       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
@@ -846,7 +1061,7 @@ export default function OGSMCompanyPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 px-2 text-[10px] font-semibold"
-                          onClick={() => openCreateGoal(objective.id)}
+                          onClick={() => openCreateGoal(group.primaryObjective.id)}
                         >
                           <Plus className="h-3 w-3" />
                           Thêm Goal
@@ -896,6 +1111,128 @@ export default function OGSMCompanyPage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="table" className="mt-0">
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="border-b border-slate-200 bg-white">
+                <div className="text-center text-base font-bold text-orange-600">
+                  TRIỂN KHAI THỰC THI CHIẾN LƯỢC
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {tableRows.length === 0 ? (
+                  <div className="p-10 text-center text-slate-400 text-sm">Chưa có dữ liệu OGSM.</div>
+                ) : (
+                  <div className="overflow-auto max-h-[70vh]">
+                    <table className="min-w-[1400px] w-full text-sm border-separate border-spacing-0">
+                      <thead className="bg-yellow-200 sticky top-0 z-10">
+                        <tr className="text-center">
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">CÁC HẠNG MỤC</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">MÃ</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">MỤC ĐÍCH</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">MỤC TIÊU</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">CÁCH LÀM</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">ĐO LƯỜNG</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">BỘ PHẬN/NGƯỜI PHỤ TRÁCH</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">CẦN NGUỒN LỰC GÌ?</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">THỜI GIAN BẮT ĐẦU</th>
+                          <th className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-blue-700 uppercase">THỜI GIAN KẾT THÚC</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tableRows.map((row, index) => {
+                          const perspective = row.objective.perspective;
+                          const theme = perspective ? getThemeColors(perspective) : null;
+                          const objectiveLabel = row.objectiveLabel;
+                          const objectivePurpose = row.objective.purpose || row.objective.description;
+                          const perspectiveLabel = perspective ? perspectiveLabels[perspective] : 'Objective';
+                          const objectiveCode = row.objective.clusterCode || '—';
+                          const linkedCodes = row.objectiveLinkedCodes ?? [];
+                          const linkedLabels = linkedCodes.map((code) => {
+                            const linkedObjective = ogsmObjectives.find(obj => obj.clusterCode?.startsWith(code));
+                            return linkedObjective
+                              ? `${code} - ${linkedObjective.objectiveText ?? linkedObjective.name}`
+                              : code;
+                          });
+                          const resourceNote = row.objective.resourceNote || '—';
+                          const startDate = formatDateLabel(row.objective.startDate);
+                          const endDate = formatDateLabel(row.objective.endDate);
+
+                          return (
+                            <tr
+                              key={`${row.objective.id}-${row.goal?.id ?? 'no-goal'}-${row.strategy?.id ?? 'no-strategy'}-${row.measure?.id ?? 'no-measure'}-${index}`}
+                              className="hover:bg-slate-50/60"
+                            >
+                              {row.objectiveRowSpan > 0 && (
+                                <td
+                                  rowSpan={row.objectiveRowSpan}
+                                  className="border border-slate-300 px-3 py-3 align-top bg-slate-50/70"
+                                >
+                                  <div className="space-y-1">
+                                    <Badge
+                                      className={`${theme ? theme.badgeBg : 'bg-slate-100'} ${theme ? theme.badgeText : 'text-slate-700'} border-0 text-[10px] uppercase tracking-wide`}
+                                    >
+                                      {perspectiveLabel}
+                                    </Badge>
+                                    <p className="font-semibold text-slate-900">{objectiveLabel}</p>
+                                    {linkedLabels.length > 0 && (
+                                      <p className="text-[11px] text-slate-500">Liên kết: {linkedLabels.join(', ')}</p>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
+                              <td className="border border-slate-300 px-3 py-3 align-top text-xs text-slate-600">
+                                {objectiveCode}
+                              </td>
+                              <td className="border border-slate-300 px-3 py-3 align-top text-xs text-slate-600">
+                                {objectivePurpose || '—'}
+                              </td>
+                              {row.goalRowSpan > 0 && (
+                                <td rowSpan={row.goalRowSpan} className="border border-slate-300 px-3 py-3 align-top">
+                                  <p className="font-medium text-slate-900">{row.goal?.name ?? 'Chưa có mục tiêu'}</p>
+                                  {row.goal?.target && (
+                                    <p className="text-xs text-slate-500 mt-1">{row.goal.target}</p>
+                                  )}
+                                </td>
+                              )}
+                              {row.strategyRowSpan > 0 && (
+                                <td
+                                  rowSpan={row.strategyRowSpan}
+                                  className="border border-slate-300 px-3 py-3 align-top text-sm text-slate-800"
+                                >
+                                  {row.strategy?.name ?? 'Chưa có cách làm'}
+                                </td>
+                              )}
+                              <td className="border border-slate-300 px-3 py-3 align-top text-sm text-slate-700">
+                                {row.measure?.name ?? (row.strategy ? '—' : 'Chưa có đo lường')}
+                              </td>
+                              {row.goalRowSpan > 0 && (
+                                <td
+                                  rowSpan={row.goalRowSpan}
+                                  className="border border-slate-300 px-3 py-3 align-top text-xs text-slate-600"
+                                >
+                                  {row.goal?.owner || '—'}
+                                </td>
+                              )}
+                              <td className="border border-slate-300 px-3 py-3 align-top text-xs text-slate-600">
+                                {resourceNote}
+                              </td>
+                              <td className="border border-slate-300 px-3 py-3 align-top text-xs text-slate-600">
+                                {startDate}
+                              </td>
+                              <td className="border border-slate-300 px-3 py-3 align-top text-xs text-slate-600">
+                                {endDate}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

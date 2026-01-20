@@ -77,6 +77,8 @@ type MeasureForm = {
   kpiId?: string | null;
 };
 
+type GraphViewMode = 'overview' | 'goals' | 'full';
+
 type DepartmentOGSMRecord = DepartmentOGSM & {
   departmentId?: string | null;
   ownerId?: string | null;
@@ -191,6 +193,14 @@ const CustomNode = ({ data }: { data: any }) => {
           <div className="text-xs text-slate-500 line-clamp-2">
             {content.description}
           </div>
+          {(content.clusterCode || content.linkedClusterLabel || content.linkedClusterCode) && (
+            <div className="mt-2 space-y-0.5 text-[10px] text-slate-400">
+              {content.clusterCode && <p>Mã: {content.clusterCode}</p>}
+              {(content.linkedClusterLabel || content.linkedClusterCode) && (
+                <p>Liên kết: {content.linkedClusterLabel || content.linkedClusterCode}</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -313,9 +323,77 @@ dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 const nodeWidth = 280;
 const nodeHeight = 160;
+const overviewColumnWidth = 320;
+const overviewRowHeight = 210;
+const perspectiveOrder: Perspective[] = ['financial', 'external', 'internal', 'learning'];
 
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
-  dagreGraph.setGraph({ rankdir: direction });
+const getOverviewLayout = (nodes: Node[]) => {
+  const positions = new Map<string, { x: number; y: number }>();
+  const objectivesByPerspective = new Map<Perspective, Node[]>();
+
+  perspectiveOrder.forEach((p) => objectivesByPerspective.set(p, []));
+
+  nodes.forEach((node) => {
+    const nodeType = node.data?.type as string;
+    const perspective = node.data?.perspective as Perspective | undefined;
+    if (nodeType === 'objective' && perspective) {
+      const bucket = objectivesByPerspective.get(perspective);
+      if (bucket) {
+        bucket.push(node);
+      }
+    }
+  });
+
+  perspectiveOrder.forEach((p, columnIndex) => {
+    const perspectiveNode = nodes.find(
+      (node) => node.data?.type === 'perspective' && node.data?.content === p
+    );
+    const x = columnIndex * overviewColumnWidth;
+
+    if (perspectiveNode) {
+      positions.set(perspectiveNode.id, { x, y: 0 });
+    }
+
+    const objectiveNodes = objectivesByPerspective.get(p) ?? [];
+    objectiveNodes.forEach((node, rowIndex) => {
+      positions.set(node.id, { x, y: (rowIndex + 1) * overviewRowHeight });
+    });
+  });
+
+  const layoutedNodes = nodes.map((node) => {
+    const position = positions.get(node.id) ?? node.position;
+    return {
+      ...node,
+      targetPosition: Position.Top,
+      sourcePosition: Position.Bottom,
+      data: { ...node.data, direction: 'TB' },
+      position: {
+        x: position.x,
+        y: position.y,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes };
+};
+
+const getLayoutedElements = (
+  nodes: Node[],
+  edges: Edge[],
+  direction = 'LR',
+  viewMode: GraphViewMode = 'full'
+) => {
+  if (viewMode === 'overview' && direction === 'TB') {
+    const overview = getOverviewLayout(nodes);
+    return { nodes: overview.nodes, edges };
+  }
+
+  const isVertical = direction === 'TB';
+  dagreGraph.setGraph({
+    rankdir: direction,
+    ranksep: isVertical ? 90 : 140,
+    nodesep: isVertical ? 40 : 80,
+  });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -361,8 +439,10 @@ export function InteractiveGraph({
   onObjectiveSelect?: (objective: OGSMObjective) => void;
   onGoalSelect?: (goal: OGSMGoal) => void;
 }) {
-  const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('LR');
+  const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('TB');
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [viewMode, setViewMode] = useState<GraphViewMode>('overview');
+  const [flowInstance, setFlowInstance] = useState<any>(null);
   const graphContainerRef = React.useRef<HTMLDivElement>(null);
   const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
   const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
@@ -398,6 +478,10 @@ export function InteractiveGraph({
           name: obj.name || '',
           description: obj.description || '',
           perspective: obj.perspective || 'financial',
+          clusterCode: obj.cluster_code || obj.clusterCode || undefined,
+          clusterGroup: obj.cluster_group || obj.clusterGroup || undefined,
+          linkedClusterCode: obj.linked_cluster_code || obj.linkedClusterCode || undefined,
+          objectiveText: obj.objective_text || obj.objectiveText || obj.name || '',
         }));
 
         const goals = (objectiveRows || []).flatMap((obj: any) =>
@@ -471,9 +555,76 @@ export function InteractiveGraph({
     let edges: Edge[] = [];
     const perspectives: Perspective[] = ['financial', 'external', 'internal', 'learning'];
 
+    const objectiveGroupMap = new Map<string, {
+      label: string;
+      perspective: Perspective;
+      objectiveIds: string[];
+      clusterCodes: Set<string>;
+      linkedCodes: Set<string>;
+      primaryObjective: OGSMObjective;
+      description: string;
+    }>();
+    const objectiveIdToGroupId = new Map<string, string>();
+
+    ogsmObjectives.forEach((objective) => {
+      const label = objective.objectiveText ?? objective.name;
+      const groupKey = `${objective.perspective}-${label}`;
+
+      if (!objectiveGroupMap.has(groupKey)) {
+        objectiveGroupMap.set(groupKey, {
+          label,
+          perspective: objective.perspective,
+          objectiveIds: [],
+          clusterCodes: new Set(),
+          linkedCodes: new Set(),
+          primaryObjective: objective,
+          description: objective.description || objective.purpose || '',
+        });
+      }
+
+      const group = objectiveGroupMap.get(groupKey);
+      if (!group) {
+        return;
+      }
+
+      group.objectiveIds.push(objective.id);
+      if (objective.clusterCode) {
+        group.clusterCodes.add(objective.clusterCode);
+      }
+      if (objective.linkedClusterCode) {
+        group.linkedCodes.add(objective.linkedClusterCode);
+      }
+      if (!group.description && (objective.description || objective.purpose)) {
+        group.description = objective.description || objective.purpose || '';
+      }
+
+      objectiveIdToGroupId.set(objective.id, groupKey);
+    });
+
+    const objectiveGroups = Array.from(objectiveGroupMap.entries()).map(([id, group]) => {
+      const linkedLabels = Array.from(group.linkedCodes).map((code) => {
+        const linkedObjective = ogsmObjectives.find(obj => obj.clusterCode?.startsWith(code));
+        return linkedObjective
+          ? `${code} - ${linkedObjective.objectiveText ?? linkedObjective.name}`
+          : code;
+      });
+
+      return {
+        id,
+        label: group.label,
+        perspective: group.perspective,
+        objectiveIds: group.objectiveIds,
+        clusterCodes: Array.from(group.clusterCodes),
+        linkedCodes: Array.from(group.linkedCodes),
+        linkedLabels,
+        primaryObjective: group.primaryObjective,
+        description: group.description,
+      };
+    });
+
     // Pre-calculate valid IDs if filtering
     let validGoalIds = new Set<string>();
-    let validObjIds = new Set<string>();
+    let validObjectiveGroupIds = new Set<string>();
 
     if (filterDepartment) {
       const relevantDepts = departmentOGSMs.filter(d => d.department === filterDepartment);
@@ -481,15 +632,21 @@ export function InteractiveGraph({
         if (d.linkedGoalId) validGoalIds.add(d.linkedGoalId);
       });
       ogsmGoals.forEach(g => {
-        if (validGoalIds.has(g.id)) validObjIds.add(g.objectiveId);
+        if (!validGoalIds.has(g.id)) {
+          return;
+        }
+        const groupId = objectiveIdToGroupId.get(g.objectiveId);
+        if (groupId) {
+          validObjectiveGroupIds.add(groupId);
+        }
       });
     }
 
     perspectives.forEach(p => {
       // 1. Get Objectives
-      let objectives = ogsmObjectives.filter(o => o.perspective === p);
+      let objectives = objectiveGroups.filter(group => group.perspective === p);
       if (filterDepartment) {
-        objectives = objectives.filter(o => validObjIds.has(o.id));
+        objectives = objectives.filter(group => validObjectiveGroupIds.has(group.id));
       }
 
       // If filtering and no objectives for this perspective, skip the entire branch (cleanup)
@@ -507,16 +664,31 @@ export function InteractiveGraph({
         const objId = obj.id;
 
         // 2. Get Goals
-        let goals = ogsmGoals.filter(g => g.objectiveId === obj.id);
+        let goals = ogsmGoals.filter(g => obj.objectiveIds.includes(g.objectiveId));
         if (filterDepartment) {
           goals = goals.filter(g => validGoalIds.has(g.id));
         }
+
+        const linkedClusterLabel = obj.linkedLabels.join(', ');
+        const clusterLabel = obj.clusterCodes.join(', ');
 
         nodes.push({
           id: objId,
           type: 'custom',
           // Pass perspective prop
-          data: { label: obj.name, type: 'objective', content: obj, hasChildren: goals.length > 0, perspective: p },
+          data: {
+            label: obj.label,
+            type: 'objective',
+            content: {
+              name: obj.label,
+              description: obj.description,
+              clusterCode: clusterLabel,
+              linkedClusterLabel,
+              primaryObjective: obj.primaryObjective,
+            },
+            hasChildren: goals.length > 0,
+            perspective: p,
+          },
           position: { x: 0, y: 0 }
         });
         edges.push({ id: `${pId}-${objId}`, source: pId, target: objId, type: 'smoothstep', animated: true, style: { stroke: '#cbd5e1', strokeWidth: 2 } });
@@ -560,6 +732,46 @@ export function InteractiveGraph({
       });
     });
 
+    const objectiveIds = new Set(
+      nodes.filter(node => node.data.type === 'objective').map(node => node.id)
+    );
+    const linkEdges = new Set<string>();
+
+    objectiveGroups.forEach((group) => {
+      if (group.linkedCodes.length === 0) {
+        return;
+      }
+
+      group.linkedCodes.forEach((linkedCode) => {
+        const targets = objectiveGroups.filter(target =>
+          target.clusterCodes.some(code => code.startsWith(linkedCode))
+        );
+
+        targets.forEach((target) => {
+          if (!objectiveIds.has(target.id) || !objectiveIds.has(group.id) || target.id === group.id) {
+            return;
+          }
+
+          const edgeId = `link-${target.id}-${group.id}`;
+          if (linkEdges.has(edgeId)) {
+            return;
+          }
+
+          edges.push({
+            id: edgeId,
+            source: target.id,
+            target: group.id,
+            type: 'smoothstep',
+            animated: false,
+            style: { stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 14, height: 14 },
+          });
+
+          linkEdges.add(edgeId);
+        });
+      });
+    });
+
     return { initialNodes: nodes, initialEdges: edges };
   }, [filterDepartment, departmentOGSMs, ogsmGoals, ogsmObjectives, kpis]);
 
@@ -567,6 +779,35 @@ export function InteractiveGraph({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [hiddenNodeIds, setHiddenNodeIds] = useState<Set<string>>(new Set());
+
+  const getHiddenNodeIdsByMode = useCallback(
+    (mode: GraphViewMode) => {
+      const hidden = new Set<string>();
+      initialNodes.forEach((node) => {
+        const nodeType = node.data?.type as string;
+        if (mode === 'overview' && (nodeType === 'goal' || nodeType === 'dept')) {
+          hidden.add(node.id);
+        }
+        if (mode === 'goals' && nodeType === 'dept') {
+          hidden.add(node.id);
+        }
+      });
+      return hidden;
+    },
+    [initialNodes]
+  );
+
+  const applyViewMode = useCallback(
+    (mode: GraphViewMode) => {
+      setViewMode(mode);
+      setHiddenNodeIds(getHiddenNodeIdsByMode(mode));
+    },
+    [getHiddenNodeIdsByMode]
+  );
+
+  useEffect(() => {
+    setHiddenNodeIds(getHiddenNodeIdsByMode(viewMode));
+  }, [getHiddenNodeIdsByMode, viewMode]);
 
   // 3. Helper to toggle nodes
   const toggleNode = useCallback((nodeId: string) => {
@@ -631,21 +872,27 @@ export function InteractiveGraph({
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       nodesWithState,
       visibleEdges,
-      layoutDirection
+      layoutDirection,
+      viewMode
     );
 
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
   }, [hiddenNodeIds, initialNodes, initialEdges, toggleNode, setNodes, setEdges, layoutDirection]);
 
+  useEffect(() => {
+    if (!flowInstance) {
+      return;
+    }
+    const fitOptions = viewMode === 'overview'
+      ? { padding: 0.15, minZoom: 0.45, maxZoom: 1.2 }
+      : { padding: 0.2, minZoom: 0.3, maxZoom: 1.2 };
+    flowInstance.fitView(fitOptions);
+  }, [flowInstance, viewMode, layoutDirection, nodes.length]);
+
   // 5. Expand/Collapse All
-  const handleExpandAll = () => setHiddenNodeIds(new Set());
-  const handleCollapseAll = () => {
-    const roots = initialNodes.filter(n => n.data.type === 'perspective').map(n => n.id);
-    const allNodeIds = initialNodes.map(n => n.id);
-    const toHide = allNodeIds.filter(id => !roots.includes(id));
-    setHiddenNodeIds(new Set(toHide));
-  };
+  const handleExpandAll = () => applyViewMode('full');
+  const handleCollapseAll = () => applyViewMode('overview');
 
   // 6. Full Screen Toggle
   useEffect(() => {
@@ -685,7 +932,8 @@ export function InteractiveGraph({
         onDepartmentSelect(node.data.content as DepartmentOGSMRecord);
       }
       if (node.data.type === 'objective' && onObjectiveSelect) {
-        onObjectiveSelect(node.data.content as OGSMObjective);
+        const objectiveContent = node.data.content as OGSMObjective & { primaryObjective?: OGSMObjective };
+        onObjectiveSelect(objectiveContent.primaryObjective ?? objectiveContent);
       }
       if (node.data.type === 'goal' && onGoalSelect) {
         onGoalSelect(node.data.content as OGSMGoal);
@@ -714,8 +962,10 @@ export function InteractiveGraph({
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
+        onInit={setFlowInstance}
         fitView
-        minZoom={0.1}
+        fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.2 }}
+        minZoom={0.25}
         maxZoom={1.5}
         attributionPosition="bottom-right"
         className="bg-slate-50"
@@ -731,6 +981,31 @@ export function InteractiveGraph({
             <Badge variant="secondary" className="bg-slate-100 text-slate-600 text-[10px] h-5 px-1.5">
               {nodes.length} nodes
             </Badge>
+          </div>
+
+          {/* View Mode */}
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-slate-500 block mb-1">View</span>
+            <div className="flex bg-slate-100 p-0.5 rounded-lg">
+              <button
+                onClick={() => applyViewMode('overview')}
+                className={`flex-1 flex items-center justify-center py-1 rounded-md text-xs transition-all ${viewMode === 'overview' ? 'bg-white shadow-sm text-blue-600 font-medium' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => applyViewMode('goals')}
+                className={`flex-1 flex items-center justify-center py-1 rounded-md text-xs transition-all ${viewMode === 'goals' ? 'bg-white shadow-sm text-blue-600 font-medium' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Goals
+              </button>
+              <button
+                onClick={() => applyViewMode('full')}
+                className={`flex-1 flex items-center justify-center py-1 rounded-md text-xs transition-all ${viewMode === 'full' ? 'bg-white shadow-sm text-blue-600 font-medium' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Full
+              </button>
+            </div>
           </div>
 
           {/* Layout Selector */}
