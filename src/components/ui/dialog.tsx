@@ -7,9 +7,25 @@ import { XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function Dialog({
+  modal = true,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  // Fix: Cleanup body styles when dialog closes
+  React.useEffect(() => {
+    if (!props.open) {
+      // Small delay to allow Radix's cleanup to complete first
+      const timer = setTimeout(() => {
+        // Reset body styles that might be left behind
+        document.body.style.removeProperty('pointer-events');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+      }, 200); // Match animation duration
+      
+      return () => clearTimeout(timer);
+    }
+  }, [props.open]);
+  
+  return <DialogPrimitive.Root data-slot="dialog" modal={modal} {...props} />
 }
 
 function DialogTrigger({

@@ -293,6 +293,13 @@ export default function OGSMDepartmentPage() {
     setDialogState(null);
     setFormError(null);
     setInitialMeasureIds([]);
+    
+    // Fix: Ensure body styles are cleaned up after dialog closes
+    // Radix Dialog sometimes leaves pointer-events: none on body
+    setTimeout(() => {
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
+    }, 0);
   };
 
   const openCreateDialog = () => {

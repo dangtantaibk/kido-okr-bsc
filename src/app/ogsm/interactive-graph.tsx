@@ -51,7 +51,8 @@ import {
   Minimize2,
   Layout,
   ArrowRight,
-  ArrowDown
+  ArrowDown,
+  Link2
 } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getObjectivesWithCascade } from '@/lib/supabase/queries/ogsm';
@@ -442,6 +443,9 @@ export function InteractiveGraph({
   const [layoutDirection, setLayoutDirection] = useState<'LR' | 'TB'>('TB');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [viewMode, setViewMode] = useState<GraphViewMode>('overview');
+  const [showLinkedEdges, setShowLinkedEdges] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [flowInstance, setFlowInstance] = useState<any>(null);
   const graphContainerRef = React.useRef<HTMLDivElement>(null);
   const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
@@ -752,19 +756,30 @@ export function InteractiveGraph({
             return;
           }
 
-          const edgeId = `link-${target.id}-${group.id}`;
+          const edgeId = `link-${group.id}-${target.id}`;
           if (linkEdges.has(edgeId)) {
             return;
           }
 
           edges.push({
             id: edgeId,
-            source: target.id,
-            target: group.id,
-            type: 'smoothstep',
-            animated: false,
-            style: { stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 14, height: 14 },
+            source: group.id,  // Source: objective that HAS linkedCode
+            target: target.id,  // Target: objective being linked TO
+            type: 'bezier',  // Bezier is prettier even with warning
+            animated: true,
+            style: { 
+              stroke: '#f59e0b', 
+              strokeWidth: 2.5, 
+              strokeDasharray: '10 5',
+              opacity: 0.75
+            },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#f59e0b', width: 18, height: 18 },
+            zIndex: 1000, // Ensure link edges appear on top
+            label: '🔗 Liên kết',
+            labelStyle: { fill: '#f59e0b', fontWeight: 700, fontSize: 12 },
+            labelBgStyle: { fill: '#fff', fillOpacity: 0.95, stroke: '#f59e0b', strokeWidth: 1 },
+            labelBgPadding: [10, 6],
+            labelBgBorderRadius: 6,
           });
 
           linkEdges.add(edgeId);
@@ -779,6 +794,9 @@ export function InteractiveGraph({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [hiddenNodeIds, setHiddenNodeIds] = useState<Set<string>>(new Set());
+  
+  // Cache for layouted node positions to prevent unnecessary re-layouts
+  const layoutCacheRef = React.useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const getHiddenNodeIdsByMode = useCallback(
     (mode: GraphViewMode) => {
@@ -853,6 +871,7 @@ export function InteractiveGraph({
   }, [initialEdges]);
 
   // 4. Effect to update Nodes based on hidden sets and Layout
+  // Effect 1: Handle layout when structure changes (NOT selection/hover)
   useEffect(() => {
     // Filter visible
     const visibleNodes = initialNodes.filter(n => !hiddenNodeIds.has(n.id));
@@ -860,9 +879,13 @@ export function InteractiveGraph({
       !hiddenNodeIds.has(e.source) && !hiddenNodeIds.has(e.target)
     );
 
-    console.log('[Graph Debug] viewMode:', viewMode, 'hiddenNodeIds:', hiddenNodeIds.size, 'visibleNodes:', visibleNodes.length, 'totalNodes:', initialNodes.length);
+    // Check if we have any manual expansions (goal or dept nodes visible when in overview mode)
+    const hasManualExpansions = viewMode === 'overview' && visibleNodes.some(n => {
+      const nodeType = n.data?.type as string;
+      return nodeType === 'goal' || nodeType === 'dept';
+    });
 
-    // Update state props
+    // Update state props (without selection/hover styles)
     const nodesWithState = visibleNodes.map(n => {
       const directChildren = initialEdges.filter(e => e.source === n.id).map(e => e.target);
       const isLeaf = directChildren.length === 0;
@@ -875,32 +898,106 @@ export function InteractiveGraph({
           isExpanded,
           hasChildren: !isLeaf,
           onToggle: () => toggleNode(n.id),
-          direction: layoutDirection // Pass direction to node
+          direction: layoutDirection
         }
       };
     });
 
     // Run Layout
+    const effectiveViewMode = hasManualExpansions ? 'goals' : viewMode;
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       nodesWithState,
       visibleEdges,
       layoutDirection,
-      viewMode
+      effectiveViewMode
     );
+
+    // Store positions in cache for later use
+    layoutedNodes.forEach(node => {
+      layoutCacheRef.current.set(node.id, { x: node.position.x, y: node.position.y });
+    });
 
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [hiddenNodeIds, initialNodes, initialEdges, toggleNode, setNodes, setEdges, layoutDirection, viewMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenNodeIds, initialNodes, initialEdges, layoutDirection, viewMode]);
+
+  // Effect 2: Handle edge filtering and node styles when selection/hover changes (NO re-layout)
+  useEffect(() => {
+    const activeNodeId = selectedNodeId || hoveredNodeId;
+
+    // Update edges based on selection
+    setEdges(currentEdges => {
+      return currentEdges.map(edge => {
+        // Filter linked edges based on showLinkedEdges mode and active node
+        const isLinkEdge = edge.id.startsWith('link-');
+        let hidden = false;
+
+        if (isLinkEdge) {
+          if (!showLinkedEdges && !activeNodeId) {
+            hidden = true;
+          } else if (activeNodeId && edge.source !== activeNodeId && edge.target !== activeNodeId) {
+            hidden = true;
+          }
+        }
+
+        // Only update if hidden status changed
+        if (edge.hidden === hidden) {
+          return edge;
+        }
+
+        return {
+          ...edge,
+          hidden
+        };
+      });
+    });
+
+    // Update node styles based on selection/hover (preserving positions)
+    setNodes(currentNodes => {
+      return currentNodes.map(n => {
+        const isSelected = n.id === selectedNodeId;
+        const isHovered = n.id === hoveredNodeId;
+
+        // Calculate new style
+        const newStyle = {
+          ...(isSelected && { 
+            boxShadow: '0 0 0 3px rgba(245, 158, 11, 0.5)',
+            transform: 'scale(1.02)'
+          }),
+          ...(isHovered && !isSelected && { 
+            boxShadow: '0 0 0 2px rgba(245, 158, 11, 0.3)'
+          })
+        };
+
+        // Check if style actually changed
+        const styleChanged = JSON.stringify(n.style) !== JSON.stringify(newStyle);
+        
+        if (!styleChanged) {
+          return n; // Return same reference to prevent re-render
+        }
+
+        return {
+          ...n,
+          style: newStyle,
+          // Explicitly preserve position to prevent jumping
+          position: n.position
+        };
+      });
+    });
+  }, [selectedNodeId, hoveredNodeId, showLinkedEdges, setNodes, setEdges]);
 
   useEffect(() => {
     if (!flowInstance) {
       return;
     }
+    // Only fit view when layout or view mode changes, not on every node update
+    // This prevents unwanted scrolling when selecting nodes
     const fitOptions = viewMode === 'overview'
       ? { padding: 0.15, minZoom: 0.45, maxZoom: 1.2 }
       : { padding: 0.2, minZoom: 0.3, maxZoom: 1.2 };
     flowInstance.fitView(fitOptions);
-  }, [flowInstance, viewMode, layoutDirection, nodes.length]);
+  }, [flowInstance, viewMode, layoutDirection]);
 
   // 5. Expand/Collapse All
   const handleExpandAll = () => applyViewMode('full');
@@ -937,6 +1034,11 @@ export function InteractiveGraph({
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
+      // Toggle selection for showing linked edges
+      if (node.data?.type === 'objective') {
+        setSelectedNodeId(prev => prev === node.id ? null : node.id);
+      }
+
       if (!node.data?.type || !node.data?.content) {
         return;
       }
@@ -953,6 +1055,21 @@ export function InteractiveGraph({
     },
     [onDepartmentSelect, onObjectiveSelect, onGoalSelect]
   );
+
+  const handleNodeMouseEnter = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (node.data?.type === 'objective') {
+      setHoveredNodeId(node.id);
+    }
+  }, []);
+
+  const handleNodeMouseLeave = useCallback(() => {
+    setHoveredNodeId(null);
+  }, []);
+
+  const handlePaneClick = useCallback(() => {
+    // Clear selection when clicking on pane (background)
+    setSelectedNodeId(null);
+  }, []);
 
   if (isLoading) {
     return (
@@ -973,14 +1090,23 @@ export function InteractiveGraph({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
+        onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         onInit={setFlowInstance}
-        fitView
+        fitView={false}
         fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.2 }}
         minZoom={0.25}
         maxZoom={1.5}
         attributionPosition="bottom-right"
         className="bg-slate-50"
+        nodesDraggable={true}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        panOnDrag={true}
+        zoomOnScroll={true}
+        preventScrolling={true}
       >
         <Background color="#94a3b8" gap={20} size={1} variant={BackgroundVariant.Dots} className="opacity-20" />
         <Controls className="bg-white border border-slate-200 shadow-md rounded-lg overflow-hidden p-1 gap-1" showInteractive={false} />
@@ -1039,6 +1165,25 @@ export function InteractiveGraph({
             </div>
           </div>
 
+          {/* Show Linked Edges Toggle */}
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-slate-500 block mb-1">Liên kết</span>
+            <Button 
+              variant={showLinkedEdges ? "default" : "outline"}
+              size="sm" 
+              onClick={() => setShowLinkedEdges(!showLinkedEdges)} 
+              className={`w-full h-7 text-[10px] transition-all ${showLinkedEdges ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              <Link2 className="w-3 h-3 mr-1.5" /> 
+              {showLinkedEdges ? 'Hiện tất cả' : 'Chỉ khi hover'}
+            </Button>
+            <p className="text-[9px] text-slate-500 italic mt-1 leading-tight">
+              {showLinkedEdges 
+                ? 'Hiện tất cả, click để lọc' 
+                : 'Hover/click để xem'}
+            </p>
+          </div>
+
           {/* Actions */}
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" size="sm" onClick={handleExpandAll} className="h-7 text-[10px] px-2">
@@ -1084,6 +1229,12 @@ export function InteractiveGraph({
               <div className="w-3 h-3 rounded bg-white border-l-4 border-blue-500 shadow-sm"></div>
               <span>Department</span>
             </div>
+            {showLinkedEdges && (
+              <div className="flex items-center gap-2 pt-1 mt-1 border-t border-slate-200">
+                <div className="w-6 h-0.5 border-t-2 border-dashed border-amber-500"></div>
+                <span className="text-amber-600 font-medium">Liên kết</span>
+              </div>
+            )}
           </div>
         </Panel>
       </ReactFlow>

@@ -349,7 +349,7 @@ const GoalItem = ({
 };
 
 export default function OGSMCompanyPage() {
-  const [activeTab, setActiveTab] = useState<'list' | 'graph' | 'table'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'graph' | 'table'>('table');
   const [ogsmObjectives, setOgsmObjectives] = useState<OGSMObjective[]>([]);
   const [ogsmGoals, setOgsmGoals] = useState<OGSMGoal[]>([]);
   const [ogsmStrategies, setOgsmStrategies] = useState<OGSMStrategyRecord[]>([]);
@@ -448,6 +448,13 @@ export default function OGSMCompanyPage() {
   const closeDialog = () => {
     setDialogState(null);
     setFormError(null);
+    
+    // Fix: Ensure body styles are cleaned up after dialog closes
+    // Radix Dialog sometimes leaves pointer-events: none on body
+    setTimeout(() => {
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
+    }, 0);
   };
 
   const openCreateObjective = () => {
@@ -936,11 +943,11 @@ export default function OGSMCompanyPage() {
           <div className="sticky top-16 z-20 bg-slate-50/95 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 -mx-6 px-6 py-2 border-b border-slate-200 mb-6 shadow-sm transition-all">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <TabsList className="bg-white border shadow-sm self-start md:self-auto">
-                <TabsTrigger value="list" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
-                  List View
-                </TabsTrigger>
                 <TabsTrigger value="table" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Bảng Excel
+                </TabsTrigger>
+                <TabsTrigger value="list" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+                  List View
                 </TabsTrigger>
                 <TabsTrigger value="graph" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                   Graph Tree View
