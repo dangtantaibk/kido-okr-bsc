@@ -55,7 +55,7 @@ export function TimeReportCharts({ projectId }: TimeReportChartsProps) {
             />
             <YAxis tick={{ fontSize: 11 }} />
             <Tooltip
-              formatter={(value: number) => [`${value.toFixed(1)}h`, 'Giờ']}
+              formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}h`, 'Giờ']}
               labelFormatter={(label) => `Ngày: ${label}`}
             />
             <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -82,7 +82,7 @@ export function TimeReportCharts({ projectId }: TimeReportChartsProps) {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value: number) => [`${value.toFixed(1)}h`, 'Giờ']} />
+            <Tooltip formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}h`, 'Giờ']} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>

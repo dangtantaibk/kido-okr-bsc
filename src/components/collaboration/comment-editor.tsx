@@ -21,6 +21,28 @@ type MentionUser = {
   name: string;
 };
 
+// Type definitions for Tiptap Mention suggestion
+type MentionCommandProps = {
+  editor: Editor;
+  range: { from: number; to: number };
+  props: { id: string; label: string };
+};
+
+type MentionSuggestionProps = {
+  editor: Editor;
+  range: { from: number; to: number };
+  query: string;
+  text: string;
+  items: MentionUser[];
+  command: (props: { id: string; label: string }) => void;
+  decorationNode: Element | null;
+  clientRect?: (() => DOMRect | null) | null;
+};
+
+type MentionKeyDownProps = {
+  event: KeyboardEvent;
+};
+
 // Suggestion dropdown component
 function MentionList({
   items,
@@ -77,7 +99,7 @@ export function CommentEditor({ workPackageId, projectId, onCommentAdded }: Comm
         },
         suggestion: {
           char: '@',
-          command: ({ editor, range, props }) => {
+          command: ({ editor, range, props }: { editor: Editor; range: any; props: any }) => {
             editor
               .chain()
               .focus()
@@ -90,7 +112,7 @@ export function CommentEditor({ workPackageId, projectId, onCommentAdded }: Comm
               ])
               .run();
           },
-          items: ({ query }) => {
+          items: ({ query }: { query: string }) => {
             setMentionQuery(query);
             setShowSuggestions(true);
             setSelectedIndex(0);
@@ -98,14 +120,14 @@ export function CommentEditor({ workPackageId, projectId, onCommentAdded }: Comm
           },
           render: () => {
             return {
-              onStart: (props) => {
+              onStart: (props: MentionSuggestionProps) => {
                 commandRef.current = props.command;
                 setShowSuggestions(true);
               },
-              onUpdate: (props) => {
+              onUpdate: (props: MentionSuggestionProps) => {
                 commandRef.current = props.command;
               },
-              onKeyDown: (props) => {
+              onKeyDown: (props: MentionKeyDownProps) => {
                 if (props.event.key === 'ArrowUp') {
                   setSelectedIndex((prev) => Math.max(0, prev - 1));
                   return true;
