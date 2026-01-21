@@ -1,8 +1,13 @@
 [phases.setup]
 nixPkgs = ['nodejs_20']
+aptPkgs = ['curl']
 
 [phases.install]
-cmds = ['yarn install --frozen-lockfile']
+cmds = [
+  'corepack enable',
+  'corepack prepare yarn@1.22.22 --activate',
+  'yarn install --frozen-lockfile'
+]
 
 [phases.build]
 cmds = ['yarn build']
